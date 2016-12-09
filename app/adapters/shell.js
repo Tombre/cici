@@ -14,7 +14,8 @@ module.exports = registerAdapter('shell', function(readMessage, onSendEvent) {
 	promptForMessage();
 
 	onSendEvent(event => {
-		console.log(event.text);
+		console.log(`Cici: ${event.text}`);
+		console.log('\n');
 		promptForMessage();
 	});
 

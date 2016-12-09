@@ -31,11 +31,6 @@ function createMessageCallback(messageStream, cb) {
 	return messageStream.take(1)
 }
 
-function getFilteredStream(eventStream, filter) {
-	return filter(eventStream)
-		.filter(e => doesConvoMatchEvent(this, e.payload));
-}
-
 function setStateFromAI(state, meaning) {
 	return _.assign({}, state, _.pick(meaning, Object.keys(state)));
 }
@@ -69,6 +64,16 @@ Conversation Object
 function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 
 	/*
+	*	HELPER
+	*/
+
+	function getFilteredStream(filter) {
+		return filter(eventStream)
+			.map(e => e.payload)
+			.filter(e => doesConvoMatchEvent(this, e));
+	}
+
+	/*
 	*	INITIAL SETUP 
 	*/
 
@@ -91,19 +96,19 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 	};
 
 	// the steam of all messages within this conversation
-	this.stream = getFilteredStream(eventStream, filterRead)
+	this.stream = getFilteredStream.call(this, filterRead)
 		.toProperty(() => sourceEvent)
 		.flatMapConcat(e => {
 			// get meaning from event and add it to the event object
 			return returnObservableMeaning(this, e)
 				.map(meaning => {
-					e.payload.meaning = meaning;
+					e.meaning = meaning;
 					return e;
 				});
 		})
-		.merge(getFilteredStream(eventStream, filterSend))
-		.map(e => e.payload)
-		.takeWhile(e => this.status === 'active');
+		.merge(getFilteredStream.call(this, filterSend))
+		.takeWhile(e => this.status === 'active')
+		.toProperty();
 
 	this.stream.read = this.stream.filter(e => e.author !== 'bot');
 	this.stream.say = this.stream.filter(e => e.author === 'bot');
@@ -124,13 +129,6 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 		}));	
 	};
 
-	this.ask = function(text, cb) {
-		this.say(text);
-		let obs = readObservable.take(1);
-		if (cb) obs.observe(cb);
-		return obs;
-	}
-
 	/*
 	*	LIFECYCLE
 	*/
@@ -139,6 +137,8 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 
 	this.begin = function() {
 		
+		if (subscription) return;
+
 		subscription = this.stream.observe(e => {
 				this.transcript.push(e);
 				this.latestActivity = Date.now();
@@ -154,7 +154,7 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 	};
 
 	this.end = function() {
-		if (subscription) this.subscription.unsubscribe();
+		if (subscription) subscription.unsubscribe();
 		subscription = null;
 		this.status = 'ended';
 		removeFromConversationsList(this);

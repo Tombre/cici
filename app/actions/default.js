@@ -1,17 +1,18 @@
-const registerIntent = require('brain/registerIntent')
+const registerIntent = require('brain/registerIntent');
 
 /*----------------------------------------------------------
 Intent
 ----------------------------------------------------------*/
 
-module.exports = registerIntent('default', function(convo) {
+module.exports = registerIntent('default', function(convo, dispatch) {
 
-	let {source, fulfillment, action } = convo.state;
-	
-	console.log(convo.subscription);
-
-	if ((source === 'domains' && fulfillment) || action === 'input.unknown') {
-		convo.say(fulfillment.speech);
-	}
+	convo.stream.read
+		.observe(e => {
+			let {source, fulfillment, action } = convo.state;
+			if ((source === 'domains' && fulfillment) || action === 'input.unknown') {
+				convo.say(fulfillment.speech);
+				convo.end();
+			}
+		});
 
 });

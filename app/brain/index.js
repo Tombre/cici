@@ -64,7 +64,7 @@ module.exports = function(adapters, actions) {
 		.map(e => e.payload)
 		.observe(e => {
 			let action = actions[e.intent] || actions['default'];
-			action.fn(_.find(conversations, convo => (convo.id === e.conversation)));
+			action.fn(_.find(conversations, convo => (convo.id === e.conversation)), eventStream.dispatch);
 		});
 
 }
