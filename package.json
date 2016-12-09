@@ -1,0 +1,25 @@
+{
+  "name": "cici",
+  "version": "1.0.0",
+  "description": "Natural Language AI for Culture Counts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "NODE_PATH=./app/ nodemon index.js --harmony"
+  },
+  "author": "Thomas Leenders <leenders.thomas@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "apiai": "^3.0.3",
+    "express": "^4.14.0",
+    "firebase-admin": "^4.0.3",
+    "kefir": "^3.6.0",
+    "lodash": "^4.17.2",
+    "require-dir-all": "^0.4.10",
+    "winston": "^2.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.11.0",
+    "promptly": "^2.1.0"
+  }
+}
