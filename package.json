@@ -16,6 +16,7 @@
     "kefir": "^3.6.0",
     "lodash": "^4.17.2",
     "require-dir-all": "^0.4.10",
+    "superagent": "^3.2.0",
     "winston": "^2.3.0"
   },
   "devDependencies": {
