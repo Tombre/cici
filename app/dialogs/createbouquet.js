@@ -1,11 +1,10 @@
+const createDialog = require('brain/createDialog'); 
+
 module.exports = createDialog('createBouquet', dialog => {
 
 	/*
 		OUTCOME
 	*/
-
-	// let outcome = dialog.outcome()
-	// 	.requireParams()
 
 	let boquetConfiguration = {
 		colours: [],
@@ -18,14 +17,14 @@ module.exports = createDialog('createBouquet', dialog => {
 		START
 	*/
 
-	dialog.intent('start')
+	dialog.intent('start', true)
 		.userSays(params => [
 			`I'd like to buy a bouquet`,	
 			`I'd like to buy a bouquet with ${params.colour('red')} and ${params.colour('blue')} flowers`
 		])
-		.params({
-			'colour': dialog.params()
-		})
+		.params([
+			dialog.params('colour')
+		])
 		.fulfillWith(response => {
 			let fulfillment = dialog.fulfilment();
 			let { colours } = response.parameters;
@@ -90,9 +89,9 @@ module.exports = createDialog('createBouquet', dialog => {
 	dialog.intent('for-occasion')
 		.requires('do-occasion')
 		.userSays(params => [params.occasion])
-		.params({
-			'occasion': dialog.params().entity('occasion')
-		})
+		.params([
+			dialog.params('occasion').entity('occasion')
+		])
 		.fulfillWith(
 			dialog.fulfillment()
 				.setContext('order-ready');
@@ -111,13 +110,15 @@ module.exports = createDialog('createBouquet', dialog => {
 		.requires(['do-compose'])
 		.userSays(params => [`add ${params.colour} ${params.flowerType}`], true)
 		.params({
-			'colour': dialog.params()
-			'flowerType': dialog.params()
+			dialog.params('colour'),
+			dialog.params('flowerType')
 		})
 		.fulfillment(response => {
 			let fulfillment = dialog.fulfilment();
 			let {colour, flowerType} = response.params
 			if (colour && flowerType) {
+				boquetConfiguration.colours.push(colour);
+				boquetConfiguration.flowerTypes.concat(flowerType);
 				fulfillment
 					.promptWith('Ok anything else?')
 					.setContext('do-compose')
@@ -142,6 +143,6 @@ module.exports = createDialog('createBouquet', dialog => {
 		.requires(['order-ready'])
 		.userSays([ 'sure', 'ok', 'yep'])
 		.fulfillWith('Great! Will send the flowers now)
-		.action('orderFlowers');
+		.action('orderFlowers', boquetConfiguration);
 
 });

@@ -31,10 +31,6 @@ function createMessageCallback(messageStream, cb) {
 	return messageStream.take(1)
 }
 
-function setStateFromAI(state, meaning) {
-	return _.assign({}, state, _.pick(meaning, Object.keys(state)));
-}
-
 /*----------------------------------------------------------
 AI
 ----------------------------------------------------------*/
@@ -61,7 +57,7 @@ function returnObservableMeaning(convo, event) {
 Conversation Object
 ----------------------------------------------------------*/
 
-function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
+function Conversation(eventStream, sourceEvent, getDialog, removeFromConversationsList) {
 
 	/*
 	*	HELPER
@@ -84,16 +80,6 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 	this.transcript = [];
 	this.status = 'active';
 	this.latestActivity = Date.now();
-
-	this.state = {
-		source: null,
-		resolvedQuery: null,
-		action: null,
-		parameters: {},
-		contexts: [],
-		fulfillment: null,
-		score: 0
-	};
 
 	// the steam of all messages within this conversation
 	this.stream = getFilteredStream.call(this, filterRead)
@@ -118,15 +104,15 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 	*	EFFECTS
 	*/
 
-	this.mapToIntent = function(intent) {
-		eventStream.dispatch(fulfillAction(intent, this.id));
-	};
-
 	this.say = function(text) {
 		eventStream.dispatch(sendMessage({
 			text: text,
 			adapterID: this.adapter
 		}));	
+	};
+
+	this.fulfillAction = function(name, params) {
+		eventStream.dispatch(fulfillAction(name, params));
 	};
 
 	/*
@@ -140,16 +126,12 @@ function Conversation(eventStream, sourceEvent, removeFromConversationsList) {
 		if (subscription) return;
 
 		subscription = this.stream.observe(e => {
-				this.transcript.push(e);
-				this.latestActivity = Date.now();
-				if (e.meaning) {
-					this.state = setStateFromAI(this.state, e.meaning);
-				}
-			});
-
-		this.stream.read
-			.take(1)
-			.observe(e => this.mapToIntent(e.meaning.action));
+			this.transcript.push(e);
+			this.latestActivity = Date.now();
+			if (e.meaning) {
+				this.state = setStateFromAI(this.state, e.meaning);
+			}
+		});
 
 	};
 

@@ -1,18 +1,9 @@
-const registerIntent = require('brain/registerIntent');
+const registerIntent = require('brain/registerAction');
 
 /*----------------------------------------------------------
 Intent
 ----------------------------------------------------------*/
 
-module.exports = registerIntent('default', function(convo, dispatch) {
-
-	convo.stream.read
-		.observe(e => {
-			let {source, fulfillment, action } = convo.state;
-			if ((source === 'domains' && fulfillment) || action === 'input.unknown') {
-				convo.say(fulfillment.speech);
-				convo.end();
-			}
-		});
-
+module.exports = registerIntent('default', function(parameters, dispatch) {
+	console.log('default action run!');
 });

@@ -12,16 +12,16 @@ Events
 *	Recieve a message from an adapter.
 */
 const ACTION_FULFILL = 'ACTION_FULFILL';
-function fulfillAction(intent, conversation) {
+function fulfillAction(actionName, parameters) {
 
 	const defaults = {
-		intent: 'default',
-		conversation: null
+		actionName: 'default',
+		parameters: {}
 	};
 
 	return {
 		type: ACTION_FULFILL,
-		payload: _.assign(defaults, { intent, conversation })
+		payload: _.assign(defaults, { actionName, parameters })
 	}
 }
 

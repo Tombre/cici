@@ -20,11 +20,15 @@ function removeConversation(conversations, convo) {
 	return _.without(conversations, [convo]);
 }
 
+function getDialog(dialogs, response) {
+	
+}
+
 /*----------------------------------------------------------
 Brain
 ----------------------------------------------------------*/
 
-module.exports = function(adapters, actions) {
+module.exports = function(adapters, actions, dialogs) {
 
 	const config = {};
 	const eventStream = generateEventStream();
@@ -35,6 +39,7 @@ module.exports = function(adapters, actions) {
 
 	adapters = _.mapValues(adapters, adapter => adapter(eventStream));
 	actions = _.mapValues(actions, action => action(eventStream));
+	dialogs = _.mapValues(dialogs, action => action(eventStream));
 
 	/*----------------------------------------------------------
 	Conversations
@@ -51,7 +56,7 @@ module.exports = function(adapters, actions) {
 		.observe(e => {
 			let indexOfConvo = _.findIndex(conversations, convo => doesConvoMatchEvent(convo, e));
 			if (indexOfConvo === -1 && e.triggerConversation === true) {
-				let newConvo = new Conversation(eventStream, e, removeConversation.bind(null, conversations));
+				let newConvo = new Conversation(eventStream, e, getDialog.bind(null, dialogs), removeConversation.bind(null, conversations));
 				conversations.push(newConvo);
 			}
 		});
@@ -63,8 +68,8 @@ module.exports = function(adapters, actions) {
 	filterbyEventType(ACTION_FULFILL, eventStream)
 		.map(e => e.payload)
 		.observe(e => {
-			let action = actions[e.intent] || actions['default'];
-			action.fn(_.find(conversations, convo => (convo.id === e.conversation)), eventStream.dispatch);
+			let action = actions[e.actionName] || actions['default'];
+			action.fn(e.parameters, eventStream.dispatch);
 		});
 
 }
