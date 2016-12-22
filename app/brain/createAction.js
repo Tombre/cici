@@ -3,7 +3,7 @@ Register Intent
 ----------------------------------------------------------*/
 
 module.exports = function(id, callback) {
-	return function(eventStream) {
+	return function(config) {
 		return { id, fn: callback };
 	};
 }

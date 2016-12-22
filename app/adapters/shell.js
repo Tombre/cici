@@ -1,7 +1,7 @@
 const { prompt } = require('promptly');
-const registerAdapter = require('brain/registerAdapter');
+const createAdapter = require('brain/createAdapter');
 
-module.exports = registerAdapter('shell', function(readMessage, onSendEvent) {
+module.exports = createAdapter('shell', function(readMessage, onSendEvent) {
 
 	function promptForMessage() {
 		prompt('message:', { silent: true }, (error, value) => {

@@ -20,15 +20,16 @@ function removeConversation(conversations, convo) {
 	return _.without(conversations, [convo]);
 }
 
-function getDialog(dialogs, response) {
-	
+function getSolutions(solutions, event) {
+	let { actionName } = event.meaning.action;
+	return solutions[actionName];
 }
 
 /*----------------------------------------------------------
 Brain
 ----------------------------------------------------------*/
 
-module.exports = function(adapters, actions, dialogs) {
+module.exports = function(adapters, actions, dialogs, entities) {
 
 	const config = {};
 	const eventStream = generateEventStream();
@@ -37,9 +38,21 @@ module.exports = function(adapters, actions, dialogs) {
 	setup
 	----------------------------------------------------------*/
 
-	adapters = _.mapValues(adapters, adapter => adapter(eventStream));
-	actions = _.mapValues(actions, action => action(eventStream));
-	dialogs = _.mapValues(dialogs, action => action(eventStream));
+	adapters = _.mapValues(adapters, adapter => adapter(eventStream, config));
+	actions = _.mapValues(actions, action => action(config));
+	dialogs = _.mapValues(dialogs, dialog => dialog(config));
+	entities = _.mapValues(entities, entity => dialog(config));
+
+	const solutions = _.reduce(dialogs, (accum, dialog) => {
+		let solutions = _.mapValues(dialog.intents, intent => intent.solutions);
+		return _.assign({}, accum, dialog.intents, solutions);
+	}, {})
+
+	/*----------------------------------------------------------
+	Dialogs
+	----------------------------------------------------------*/
+
+	// Plug dialogs push stream into event stream.
 
 	/*----------------------------------------------------------
 	Conversations
@@ -56,7 +69,7 @@ module.exports = function(adapters, actions, dialogs) {
 		.observe(e => {
 			let indexOfConvo = _.findIndex(conversations, convo => doesConvoMatchEvent(convo, e));
 			if (indexOfConvo === -1 && e.triggerConversation === true) {
-				let newConvo = new Conversation(eventStream, e, getDialog.bind(null, dialogs), removeConversation.bind(null, conversations));
+				let newConvo = new Conversation(eventStream, e, getSolutions.bind(null, solutions), removeConversation.bind(null, conversations));
 				conversations.push(newConvo);
 			}
 		});

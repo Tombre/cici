@@ -1,4 +1,4 @@
-const registerIntent = require('brain/registerAction');
+const registerIntent = require('brain/createAction');
 
 /*----------------------------------------------------------
 Intent

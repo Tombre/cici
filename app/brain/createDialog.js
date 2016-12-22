@@ -1,81 +1,125 @@
 const _ = require('lodash');
 const kefir = require('kefir');
-const { fulfillAction } = require('brain/events/actions');
-const { sendMessage } = require('brain/events/message');
+
+/*----------------------------------------------------------
+Helper
+----------------------------------------------------------*/
 
 /*----------------------------------------------------------
 Intent
 ----------------------------------------------------------*/
 
-function intent(subject, name, initialIntent) {
+function intent(dialogName, name, initialIntent) {
 
-	name = initialIntent ? name : (subject.dialog + '/' + name);
+	name = dialogName + '/' + name;
 
 	const definition = {
-		name: ,
+		name,
 		initialIntent,
-		auto: true,
-		contexts: [],
-		templates: [],
+		contexts: (initialIntent ? [] : [dialogName]),
 		userSays: [],
-		responses: {
-			action: `${name}_trigger`,
-			resetContexts: false
-			parameters: []
-		}
+		parameters: [],
+		// all solutions take two arguments, a dispatch object (for dispatching actions) and a response
+		solutions: []
 	};
 
-	const setDefinition = _.partial(subject.setDefinition, name, 'intent');
-	const solutions = [];
+	const Factory = function() {
 
-	const config = function() {
+		this.definition = definition;
 
-		/*
-			USER SAYS
-		*/
-
-		this.userSays = function(sayings) {
+		this.userSays = function(sayings, isTemplate = false) {
 			
-			let { userSays } = definition;
-			let willSay = [];
-			
-			sayings = _.isFunction(sayings) ? sayings(params) : sayings;
+			let delim = '<%id=';
+			let usedParamInstances = {};
+			let willSay;
+
+			if (_.isFunction(sayings)) {
+
+				if (!this.definition.parameters) console.log(`You have not added any parametersto the intent ${name}, you might want to add some before you run userSays `)
+
+				let params = _.chain(this.definition.parameters)
+					.keyBy(param => param.name)
+					.mapValues(param => text => {
+
+						if (isTemplate) {
+							if (!param.entityName) throw new Error(`Param ${param.name} must be linked to an entity if you are using template mode`);
+							return `@${param.entityName}:${param.name}`
+						}
+
+						let id = _.uniqueId();
+						usedParamInstances[id] = {  param, text };
+						
+						return '<||>' + delim + id + '<||>';
+
+					})
+					.value();
+				sayings = sayings(params);
+			}
 
 			if (!_.isArray(sayings)) throw new Error('Argument in "userSays" call must return an array');
 
-			// paramaters will be into the string via @name
-			sayings.forEach(saying => willSay.push({
-				"data": [{
-					text: saying
-				}]
+			willSay = sayings.map(saying => {
+
+				let def = { data: [], isTemplate };
+
+				// when there is no template 
+				if (saying.indexOf('<||>') <= 0) {
+					def.data.push({ text: saying });
+					return def;
+				}
+
+				saying = saying.split('<||>');
+				def.data = saying.map(part => {
+					
+					if (part.indexOf(delim) === -1) return { text: part };
+					let instance = usedParamInstances[part.substring(delim.length)];
+
+					let data = {
+						text: instance.text,
+						alias: instance.param.name
+					}
+					
+					if (instance.param.entityName) data.entity = instance.param.entityName;
+					return data;
+
+				});
+
+				return def;
+
 			});
 
-			definition.userSays.concat(willSay);
-
+			this.definition.userSays = _.union(this.definition.userSays, willSay);
 			return this;
 
 		};
 
 		this.params = function(params) {
 			if (!_.isArray(params)) throw new Error('Intent params() call must be provided an array of params as the first argument');
-			definition.responses.parameters.concat(params);
+			this.definition.parameters = this.definition.parameters.concat(params);
 			return this;
 		};
 
 		this.fulfillWith = function(fulfilmentFn) {
-			solutions.push(response => fulfilmentFn(response));
+			this.definition.solutions.push(((dispatch, response) => fulfilmentFn(response)));
 			return this;
 		};
 
 		this.action = function(name, params) {
-			solutions.push(response => subject.dispatchToAction(name, params));
+			let fn = (dispatch, response) => dispatch.action(name, params);
+			if (_.isFunction(name)) fn = (dispatch, response) => name(response);
+			this.definition.solutions.push(fn);
 			return this;
 		};
 
+		this.requires = function(contexts) {
+			contexts = _.isArray(contexts) ? contexts : [contexts];
+			this.definition.contexts = _.union(this.definition.contexts, contexts);
+			return this;
+		}
+
 	}
 
-	setDefinition(definition);
-	return (new config());
+	return (new Factory());
 
 }
 
@@ -83,14 +127,34 @@ function intent(subject, name, initialIntent) {
 Params
 ----------------------------------------------------------*/
 
-function params(subject, name, value, default) {
-	const entity = (name) => {};
-	return {
-		name, 
-		value: value || ('$' + name),
-		required: false,
-		entity
+function param(subject, name, defaultValue) {
+
+	function Factory() {
+		
+		this.name = name; 
+		this.value = ('\$' + name);
+		this.defaultValue = defaultValue;
+		this.isList = false;
+
+		this.entity = (name) => {
+			this.entityName = name;
+			return this;
+		};
+
+		this.setValue = (value) => {
+			this.value = value;
+			return this;
+		};
+
+		this.isList = (bool) => {
+			this.isList = Boolean(bool);
+			return this;
+		}
+
 	}
+
+	return (new Factory());
+
 }
 
 /*----------------------------------------------------------
@@ -99,21 +163,21 @@ Fulfilment
 
 function fulfilment(subject) {
 
-	function solution() {
+	function Factory() {
 
 		const chain = [];
-		const fn = function(response) { chain.forEach(eval => eval(response)) }
+		const fn = function(dispatch, response) { chain.forEach(eval => eval(dispatch, response)) }
 
 		fn.promptWith= function(text) {
-			chain.push(response => {
+			chain.push((dispatch, response) => {
 				let text = _.isFunction(text) ? text(response.params) : text;
-				subject.say(text);
+				dispatch.say(text);
 			});
 			return fn;
 		}
 
 		fn.setContext= function(context) {
-			chain.push(response => subject.setContext(context));
+			chain.push((dispatch, response) => subject.setContext(context));
 			return fn;
 		}
 
@@ -121,7 +185,7 @@ function fulfilment(subject) {
 
 	};
 
-	return (new solution());
+	return (new Factory());
 
 }
 
@@ -131,45 +195,32 @@ Dialog
 
 function Dialog(name) {
 
-	let pushStream = kefir.pool();
 	let currentContext = [name];
 	
 	let definition = {
 		name,
 		intents: {},
-		entities: {}
 	};
 
 	const subject = {
-
-		dialog: name,
-
-		say: function(text) {
-			pushStream.plug(kefir.constant(sendMessage({ text });
-		},
-		
-		dispatchToAction: function(name, params) {
-			pushStream.plug(kefir.constant(fulfillAction(name, params));
-		},
 		
 		setContext: function(ctx) {
 			currentContext = _.isArray(ctx) ? ctx : [ctx];
-		},
-		
-		setDefinition: function(type, id, obj) {
-			definition[type][id] = obj;
 		}
 
 	};
 
-	const resolve = function() {
-		return _.assign({}, definition, { pushStream });
+	const resolve = function(config) {
+		return _.assign({}, definition);
 	};
 
-	resolve.intent = _.partial(intent, subject);
-	resolve.intent.approval = (name) => intent(subject, name, false).userSays([ 'sure', 'ok', 'yep']);
-	resolve.intent.refusal = (name) => intent(subject, name, false).userSays([ 'no', 'nope', 'nup']);
-	resolve.params = _.partial(params, subject);
+	resolve.intent = (name, initialIntent) => intent(definition.name, name, initialIntent);
+	resolve.intent.approval = (context) => intent(definition.name, (context + '-approval'), false).requires(context).userSays([ 'sure', 'ok', 'yep']);
+	resolve.intent.refusal = (context) => intent(definition.name, (context + '-refusal'), false).requires(context).userSays([ 'no', 'nope', 'nup']);
+
+	resolve.registerIntent = (intent) => { definition.intents[intent.definition.name] = intent };
+
+	resolve.param = _.partial(param, subject);
 	resolve.fulfilment = _.partial(fulfilment, subject);
 
 	return resolve;
@@ -183,5 +234,5 @@ createDialog
 module.exports = function(name, setup) {
 	const dialog = Dialog(name);
 	setup(dialog);
-	return dialog();
+	return (config => dialog(config));
 }

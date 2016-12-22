@@ -8,7 +8,7 @@ Register Adapter
 
 module.exports = function(id, adapter) {	
 	
-	return function(eventStream) {
+	return function(eventStream, config) {
 
 		const readStream = filterRead(eventStream).filter(e => (e.adapterID === id));
 		const sayStream = filterSend(eventStream)

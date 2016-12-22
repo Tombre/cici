@@ -57,7 +57,7 @@ function returnObservableMeaning(convo, event) {
 Conversation Object
 ----------------------------------------------------------*/
 
-function Conversation(eventStream, sourceEvent, getDialog, removeFromConversationsList) {
+function Conversation(eventStream, sourceEvent, getSolutions, removeFromConversationsList) {
 
 	/*
 	*	HELPER
@@ -104,14 +104,14 @@ function Conversation(eventStream, sourceEvent, getDialog, removeFromConversatio
 	*	EFFECTS
 	*/
 
-	this.say = function(text) {
+	const say = function(text) {
 		eventStream.dispatch(sendMessage({
 			text: text,
 			adapterID: this.adapter
 		}));	
 	};
 
-	this.fulfillAction = function(name, params) {
+	const fulfillAction = function(name, params) {
 		eventStream.dispatch(fulfillAction(name, params));
 	};
 
@@ -129,7 +129,8 @@ function Conversation(eventStream, sourceEvent, getDialog, removeFromConversatio
 			this.transcript.push(e);
 			this.latestActivity = Date.now();
 			if (e.meaning) {
-				this.state = setStateFromAI(this.state, e.meaning);
+				let solutions = getSolutions(e);
+				solutions.forEach(fn => fn({ say, action }, e.meaning));
 			}
 		});
 
