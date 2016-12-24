@@ -21,8 +21,11 @@ function removeConversation(conversations, convo) {
 }
 
 function getSolutions(solutions, event) {
-	let { actionName } = event.meaning.action;
-	return solutions[actionName];
+	let action = event.meaning.action;
+	if (solutions[action]) {
+		return solutions[action]
+	};
+	return [];
 }
 
 /*----------------------------------------------------------
@@ -41,10 +44,12 @@ module.exports = function(adapters, actions, dialogs, entities) {
 	adapters = _.mapValues(adapters, adapter => adapter(eventStream, config));
 	actions = _.mapValues(actions, action => action(config));
 	dialogs = _.mapValues(dialogs, dialog => dialog(config));
-	entities = _.mapValues(entities, entity => dialog(config));
+	entities = _.mapValues(entities, entity => entity(config));
 
 	const solutions = _.reduce(dialogs, (accum, dialog) => {
-		let solutions = _.mapValues(dialog.intents, intent => intent.solutions);
+		let solutions = _.mapValues(dialog.intents, intent => {
+			return intent.definition.solutions;
+		});
 		return _.assign({}, accum, dialog.intents, solutions);
 	}, {})
 
@@ -82,7 +87,7 @@ module.exports = function(adapters, actions, dialogs, entities) {
 		.map(e => e.payload)
 		.observe(e => {
 			let action = actions[e.actionName] || actions['default'];
-			action.fn(e.parameters, eventStream.dispatch);
+			action.fn(eventStream.dispatch, e.parameters);
 		});
 
 }

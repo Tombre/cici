@@ -100,14 +100,20 @@ function intent(dialogName, name, initialIntent) {
 		};
 
 		this.fulfillWith = function(fulfilmentFn) {
-			this.definition.solutions.push(((dispatch, response) => fulfilmentFn(response)));
-			return this;
-		};
-
-		this.action = function(name, params) {
-			let fn = (dispatch, response) => dispatch.action(name, params);
-			if (_.isFunction(name)) fn = (dispatch, response) => name(response);
-			this.definition.solutions.push(fn);
+			let solution = fulfilmentFn;
+			if (fulfilmentFn.isFulfilment !== true) {
+				solution = (dispatch, response) => {
+					// map the dispatch so you can chain (interface is a little easier to use this way)
+					let mappedDispatch = _.mapValues(dispatch, dispatchFn => {
+						return function () {
+							dispatchFn(...arguments);
+							return dispatch;
+						}
+					});
+					return fulfilmentFn(mappedDispatch, response);
+				};
+			}
+			this.definition.solutions.push(solution);
 			return this;
 		};
 
@@ -127,7 +133,7 @@ function intent(dialogName, name, initialIntent) {
 Params
 ----------------------------------------------------------*/
 
-function param(subject, name, defaultValue) {
+function param(name, defaultValue) {
 
 	function Factory() {
 		
@@ -161,31 +167,37 @@ function param(subject, name, defaultValue) {
 Fulfilment
 ----------------------------------------------------------*/
 
-function fulfilment(subject) {
+function fulfilment() {
 
-	function Factory() {
+	const chain = [];
+	const fn = function(dispatch, response) { chain.forEach(eval => eval(dispatch, response)) }
 
-		const chain = [];
-		const fn = function(dispatch, response) { chain.forEach(eval => eval(dispatch, response)) }
+	fn.isFulfilment = true;
 
-		fn.promptWith= function(text) {
-			chain.push((dispatch, response) => {
-				let text = _.isFunction(text) ? text(response.params) : text;
-				dispatch.say(text);
-			});
-			return fn;
-		}
-
-		fn.setContext= function(context) {
-			chain.push((dispatch, response) => subject.setContext(context));
-			return fn;
-		}
-
+	fn.say= function(text) {
+		chain.push((dispatch, response) => {
+			let text = _.isFunction(text) ? text(response.params) : text;
+			dispatch.say(text);
+		});
 		return fn;
+	}
 
+	fn.action = function(name, params) {
+		let actionfn = (dispatch, response) => dispatch.action(name, params);
+		if (_.isFunction(name)) fn = (dispatch, response) => name(response);
+		chain.push(actionfn);
+		return fn;
 	};
 
-	return (new Factory());
+	fn.setContext= function(context) {
+		let contexts = _.isArray(context) ? context : [context];
+		chain.push((dispatch, response) => {
+			dispatch.setContext(contexts)
+		});
+		return fn;
+	}
+
+	return fn;
 
 }
 
@@ -194,20 +206,10 @@ Dialog
 ----------------------------------------------------------*/
 
 function Dialog(name) {
-
-	let currentContext = [name];
 	
 	let definition = {
 		name,
 		intents: {},
-	};
-
-	const subject = {
-		
-		setContext: function(ctx) {
-			currentContext = _.isArray(ctx) ? ctx : [ctx];
-		}
-
 	};
 
 	const resolve = function(config) {
@@ -220,8 +222,8 @@ function Dialog(name) {
 
 	resolve.registerIntent = (intent) => { definition.intents[intent.definition.name] = intent };
 
-	resolve.param = _.partial(param, subject);
-	resolve.fulfilment = _.partial(fulfilment, subject);
+	resolve.param = param;
+	resolve.fulfilment = fulfilment;
 
 	return resolve;
 

@@ -1,6 +1,6 @@
 const kefir = require('kefir');
 const _ = require('lodash');
-const apiai = require('apiai');
+const { query, config } = require('helpers/api');
 const { filterRead, filterSend } = require('helpers/streams');
 const { sendMessage } = require('brain/events/message');
 const { fulfillAction } = require('brain/events/actions');
@@ -9,7 +9,6 @@ const { fulfillAction } = require('brain/events/actions');
 Settings
 ----------------------------------------------------------*/
 
-const ai = apiai("31a2f7230a7b4852a11bcada3ad287a3");
 const convoTimeout =  1000 * 60 * 4;
 
 /*----------------------------------------------------------
@@ -36,22 +35,28 @@ AI
 ----------------------------------------------------------*/
 
 function returnObservableMeaning(convo, event) {
-	return kefir.stream(emitter => {
-		let options = {
-			sessionId: convo.id
-		};
-		const request = ai.textRequest(event.text, options);
-		request.on('response', response => {
-			emitter.emit(response.result)
-			emitter.end();
+	let request = query(event.text, { sessionId : convo.id });
+	return kefir.fromPromise(request)
+		.map(e => {
+			return e.result;
 		});
-		request.on('error', response => {
-			emitter.error(response);
-			emitter.end();
-		});
-		request.end();
-	});
 };
+
+
+/*----------------------------------------------------------
+RESPONSE
+----------------------------------------------------------*/
+
+function defaultResponse(dispatch, meaning) {
+	if (meaning.score === 1 && meaning.fulfillment.speech) {
+		return dispatch.say(meaning.fulfillment.speech);
+	}
+	return dispatch.action('default')
+}
+
+function errorHandler(error) {
+	console.log('ERROR', error);
+}
 
 /*----------------------------------------------------------
 Conversation Object
@@ -79,15 +84,20 @@ function Conversation(eventStream, sourceEvent, getSolutions, removeFromConversa
 	
 	this.transcript = [];
 	this.status = 'active';
-	this.latestActivity = Date.now();
+	this.latestActivity = Date.now();	
+	this.cognitiveFunction = 'idle';
 
-	// the steam of all messages within this conversation
+	// the steam of all messages within this conversation. For every message the meaning is interpereted. While this is occurring, ongoing messages are buffered
 	this.stream = getFilteredStream.call(this, filterRead)
 		.toProperty(() => sourceEvent)
+		// manage cognitive buffer of events. This is so the system only has to interperate one message at a time
+		.takeWhile(e => this.cognitiveFunction === 'idle')
 		.flatMapConcat(e => {
+			this.cognitiveFunction = 'recognition'
 			// get meaning from event and add it to the event object
 			return returnObservableMeaning(this, e)
 				.map(meaning => {
+					this.resolvingMeaning = false;
 					e.meaning = meaning;
 					return e;
 				});
@@ -104,15 +114,54 @@ function Conversation(eventStream, sourceEvent, getSolutions, removeFromConversa
 	*	EFFECTS
 	*/
 
-	const say = function(text) {
+	const say = (text) => {
 		eventStream.dispatch(sendMessage({
 			text: text,
 			adapterID: this.adapter
 		}));	
 	};
 
-	const fulfillAction = function(name, params) {
-		eventStream.dispatch(fulfillAction(name, params));
+	const dispatchAction = (defaults, name, params) => {
+		let computed = _.assign({}, defaults, params);
+		eventStream.dispatch(fulfillAction(name, computed));
+	};
+
+	const setContext = (contexts) => {
+		
+	};
+
+	const observeSubscription = e => {
+
+		this.transcript.push(e);
+		this.latestActivity = Date.now();
+
+		if (e.author === 'bot') return;
+
+		let defferFor = [Promise.resolve()];
+		let solutions = getSolutions(e);
+		let dispatch = { 
+			say: say, 
+			action: _.partial(dispatchAction, { message: e }),
+			setContext: setContext 
+		};
+
+		try {
+			if (solutions.length === 0) {
+				defaultResponse(dispatch, e.meaning);
+			} else {
+				// run the solutions, passing dispatch and the meaning of the message. If they return a promise, we will wait for them
+				// to complete before continuing
+				defferFor = defferFor.concat(solutions.map(fn => fn(dispatch, e.meaning)));
+			}
+		} catch(e) {
+			console.log(e);
+		}
+
+		Promise.all(defferFor)
+			.then(() => {
+				this.cognitiveFunction = 'idle';
+			});
+
 	};
 
 	/*
@@ -122,18 +171,8 @@ function Conversation(eventStream, sourceEvent, getSolutions, removeFromConversa
 	let subscription;
 
 	this.begin = function() {
-		
 		if (subscription) return;
-
-		subscription = this.stream.observe(e => {
-			this.transcript.push(e);
-			this.latestActivity = Date.now();
-			if (e.meaning) {
-				let solutions = getSolutions(e);
-				solutions.forEach(fn => fn({ say, action }, e.meaning));
-			}
-		});
-
+		subscription = this.stream.observe(observeSubscription, errorHandler);
 	};
 
 	this.end = function() {
