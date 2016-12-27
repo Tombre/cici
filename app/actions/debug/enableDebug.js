@@ -1,9 +1,9 @@
-const registerIntent = require('brain/createAction');
+const createAction = require('brain/createAction');
 
 /*----------------------------------------------------------
 Intent
 ----------------------------------------------------------*/
 
-module.exports = registerIntent('enableDebug', function(parameters, dispatch) {
+module.exports = createAction('enableDebug', function(parameters, dispatch) {
 	convo.say('enabling debug mode');
 });

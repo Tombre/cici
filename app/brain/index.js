@@ -28,6 +28,13 @@ function getSolutions(solutions, event) {
 	return [];
 }
 
+function getIntent(intents, event) {
+	let action = event.meaning.action;
+	if (intents[action]) {
+		return intents[action].definition;
+	};
+}
+
 /*----------------------------------------------------------
 Brain
 ----------------------------------------------------------*/
@@ -45,6 +52,10 @@ module.exports = function(adapters, actions, dialogs, entities) {
 	actions = _.mapValues(actions, action => action(config));
 	dialogs = _.mapValues(dialogs, dialog => dialog(config));
 	entities = _.mapValues(entities, entity => entity(config));
+
+	const intents = _.reduce(dialogs, (accum, dialog) => {
+		return _.assign({}, accum, dialog.intents);
+	}, {});
 
 	const solutions = _.reduce(dialogs, (accum, dialog) => {
 		let solutions = _.mapValues(dialog.intents, intent => {
@@ -74,7 +85,7 @@ module.exports = function(adapters, actions, dialogs, entities) {
 		.observe(e => {
 			let indexOfConvo = _.findIndex(conversations, convo => doesConvoMatchEvent(convo, e));
 			if (indexOfConvo === -1 && e.triggerConversation === true) {
-				let newConvo = new Conversation(eventStream, e, getSolutions.bind(null, solutions), removeConversation.bind(null, conversations));
+				let newConvo = new Conversation(eventStream, e, getIntent.bind(null, intents), removeConversation.bind(null, conversations));
 				conversations.push(newConvo);
 			}
 		});

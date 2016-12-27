@@ -109,7 +109,7 @@ function syncNewIntents(newIntents) {
 		
 	return Promise.all(
 		newIntents.map(
-			intent => api.POST('intents', intent)
+			intent => api.POST('intents', null, intent)
 				.then(resp => {
 					bar.tick();
 					return resp;
@@ -156,7 +156,7 @@ function syncNewEntities(newEntities) {
 	let bar = new ProgressBar('Syncing [:bar] :percent', { total: newEntities.length });
 	return Promise.all(
 		newEntities.map(
-			entity => api.POST('entities', entity)
+			entity => api.POST('entities', null, entity)
 				.then(resp => {
 					bar.tick();
 					return resp;

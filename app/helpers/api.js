@@ -2,7 +2,7 @@ const config = require('../../config.json')["api.ai"];
 const _ = require('lodash');
 const request = require('request');
 
-function req(type, entity, query) {
+function req(type, entity, query, body) {
 	return new Promise((resolve, reject) => {
 		const options = {
 			json: true,
@@ -16,8 +16,9 @@ function req(type, entity, query) {
 		options.url += `?v=${config.v}`;
 
 		if (type !== 'get') options.headers['Content-Type'] = 'application/json; charset=utf-8';
-		if (['post', 'patch', 'put'].indexOf(type) >= 0) options.body = query;
-		if (type === 'get') options.qs = query;
+		
+		options.body = body;
+		options.qs = query;
 
 		request[type](options, (error, response, body) => {
 			if (error) return reject(error);

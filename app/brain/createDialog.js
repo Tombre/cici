@@ -16,12 +16,28 @@ function intent(dialogName, name, initialIntent) {
 	const definition = {
 		name,
 		initialIntent,
+		dialog: dialogName,
 		contexts: (initialIntent ? [] : [dialogName]),
 		userSays: [],
 		parameters: [],
 		// all solutions take two arguments, a dispatch object (for dispatching actions) and a response
 		solutions: []
 	};
+
+	// push the initial solution to set the correct context. This will only trigger for the initial intent.
+	definition.solutions.push((dispatch, response) => {
+		if (!_.find(response.contexts, context => context.name === dialogName)) {
+			let fulfill = fulfilment().setContext(dialogName);
+			return fulfill(dispatch, response);
+		}
+		return (()=>{});
+	});
+
+	// solution = (dispatch, response) => {
+	// 	let fulfilment = fulfilmentFn(response);
+	// 	if (fulfilment.isFulfilment !== true) throw new Error('You must return a proper fulfilment function when using fulfillWith');
+	// 	return fulfilment(dispatch, response);
+	// };
 
 	const Factory = function() {
 
@@ -103,14 +119,9 @@ function intent(dialogName, name, initialIntent) {
 			let solution = fulfilmentFn;
 			if (fulfilmentFn.isFulfilment !== true) {
 				solution = (dispatch, response) => {
-					// map the dispatch so you can chain (interface is a little easier to use this way)
-					let mappedDispatch = _.mapValues(dispatch, dispatchFn => {
-						return function () {
-							dispatchFn(...arguments);
-							return dispatch;
-						}
-					});
-					return fulfilmentFn(mappedDispatch, response);
+					let fulfilment = fulfilmentFn(response);
+					if (fulfilment.isFulfilment !== true) throw new Error('You must return a proper fulfilment function when using fulfillWith');
+					return fulfilment(dispatch, response);
 				};
 			}
 			this.definition.solutions.push(solution);
@@ -170,14 +181,17 @@ Fulfilment
 function fulfilment() {
 
 	const chain = [];
-	const fn = function(dispatch, response) { chain.forEach(eval => eval(dispatch, response)) }
+	const fn = function(dispatch, response) { 
+		let map = chain.map(eval => eval(dispatch, response));
+		return Promise.all(map);
+	}
 
 	fn.isFulfilment = true;
 
 	fn.say= function(text) {
 		chain.push((dispatch, response) => {
-			let text = _.isFunction(text) ? text(response.params) : text;
-			dispatch.say(text);
+			text = _.isFunction(text) ? text(response.params) : text;
+			return dispatch.say(text);
 		});
 		return fn;
 	}
@@ -187,12 +201,25 @@ function fulfilment() {
 		if (_.isFunction(name)) fn = (dispatch, response) => name(response);
 		chain.push(actionfn);
 		return fn;
-	};
+	}
 
-	fn.setContext= function(context) {
-		let contexts = _.isArray(context) ? context : [context];
+	fn.setContext= function(context, lifespan) {
 		chain.push((dispatch, response) => {
-			dispatch.setContext(contexts)
+			return dispatch.setContext(context, lifespan);
+		});
+		return fn;
+	}
+
+	fn.clearContext = function(context) {
+		chain.push((dispatch, response) => {
+			return dispatch.clearContext(context);
+		});
+		return fn;
+	}
+
+	fn.endDialog = function() {
+		chain.push((dispatch, response) => {
+			return dispatch.endDialog();
 		});
 		return fn;
 	}
@@ -217,8 +244,8 @@ function Dialog(name) {
 	};
 
 	resolve.intent = (name, initialIntent) => intent(definition.name, name, initialIntent);
-	resolve.intent.approval = (context) => intent(definition.name, (context + '-approval'), false).requires(context).userSays([ 'sure', 'ok', 'yep']);
-	resolve.intent.refusal = (context) => intent(definition.name, (context + '-refusal'), false).requires(context).userSays([ 'no', 'nope', 'nup']);
+	resolve.intent.approval = (context) => intent(definition.name, (context + '-approval'), false).requires(context).userSays([ 'sure', 'ok', 'yep', 'yeah']);
+	resolve.intent.refusal = (context) => intent(definition.name, (context + '-refusal'), false).requires(context).userSays([ 'no', 'nope', 'nup', 'nah']);
 
 	resolve.registerIntent = (intent) => { definition.intents[intent.definition.name] = intent };
 

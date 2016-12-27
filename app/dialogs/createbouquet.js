@@ -30,7 +30,8 @@ module.exports = createDialog('createBouquet', dialog => {
 				`I'd like to buy a bouquet`,	
 				`I'd like to buy a bouquet with ${params.colour('red')} and ${params.colour('blue')} flowers`
 			])
-			.fulfillWith((fulfilment, response) => {
+			.fulfillWith((response) => {
+				let fulfilment = dialog.fulfilment();
 				let { colours } = response.parameters;
 				if (colours && colours.length > 0) {
 					boquetConfiguration.colours = colours;
@@ -42,6 +43,7 @@ module.exports = createDialog('createBouquet', dialog => {
 						.say('Would you like to compose one yourself?')
 						.setContext('should-compose');
 				}
+				return fulfilment;
 			}))
 
 	dialog.registerIntent(
@@ -88,7 +90,7 @@ module.exports = createDialog('createBouquet', dialog => {
 			.fulfillWith(
 				dialog.fulfilment()
 					.setContext('order-ready')
-					.say(params => `Ok great, ready to order a bouquet for ${params.occasion}?`)));
+					.say(`Ok great, ready to order the bouquet?`)));
 
 
 
@@ -106,10 +108,12 @@ module.exports = createDialog('createBouquet', dialog => {
 				dialog.param('flowerType').entity('flowerType').isList(true)
 			])
 			.userSays(params => [`add ${params.colour()} ${params.flowerType()}`], true)
-			.fulfillWith((fulfilment, response) => {
-				let {colour, flowerType} = response.params
+			.fulfillWith((response) => {
+				let fulfilment = dialog.fulfilment();
+				let colour = response.parameters.colour;
+				let flowerType = response.parameters.flowerType
 				if (colour && flowerType) {
-					boquetConfiguration.colours.push(colour);
+					boquetConfiguration.colours.concat(colour);
 					boquetConfiguration.flowerTypes.concat(flowerType);
 					fulfilment
 						.say('Ok anything else?')
@@ -139,6 +143,7 @@ module.exports = createDialog('createBouquet', dialog => {
 				dialog.fulfilment()
 					.say('Great! Will send the flowers now')
 					.action('orderFlowers', boquetConfiguration)
-			));
+					.endDialog()
+			))
 
 });
