@@ -28,8 +28,18 @@ function doesConvoMatchEvent(convo, event) {
 	);
 }
 
-function createMessageCallback(messageStream, cb) {
-	return messageStream.take(1)
+function getGeneratorFromFnArray(arr, args) {
+	function* iter() {
+		for (var i = 0; i < arr.length; i++) {
+			let index = i;
+			yield (fn => arr[index].apply(null, args));
+		}
+	}
+	let dfferable = Promise.resolve();
+	for (let fn of iter()) {
+		dfferable = dfferable.then(fn);
+	}
+	return dfferable;
 }
 
 /*----------------------------------------------------------
@@ -116,30 +126,23 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		.takeWhile(e => this.status === 'active')
 		.toProperty();
 
-	// The reaction stream expects functions in the form of effects. Reactions allow you to 
-	this.reactionStream = kefir.pool();
-	this.reactionStream.dispatch = e => this.reactionStream.plug(kefir.constant(e));
-	this.reactionStream.trigger = () => this.reactionStream.dispatch(() => {});
-
 
 	/*
 	*	EFFECTS
 	*/
 
 	const say = (text) => {
-		this.reactionStream.dispatch(() => {
-			eventStream.dispatch(sendMessage({
-				text: text,
-				adapterID: this.adapter
-			}));	
-		});
+		eventStream.dispatch(sendMessage({
+			text: text,
+			adapterID: this.adapter
+		}));
+		return Promise.resolve();
 	};
 
 	const dispatchAction = (defaults, name, params) => {
-		this.reactionStream.dispatch(() => {
-			let computed = _.assign({}, defaults, params);
-			eventStream.dispatch(fulfillAction(name, computed));
-		});
+		let computed = _.assign({}, defaults, params);
+		eventStream.dispatch(fulfillAction(name, computed));
+		return Promise.resolve();
 	};
 
 	const setContext = (context, lifespan) => {
@@ -154,7 +157,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	const clearContext = (context) => {
 		let contexts = _.isArray(context) ? context : [context];
 		let contextRequests = contexts.map(context => DELETE(`contexts/${context}`, { sessionId: this.id }));
-		return Promise.all(contextRequests);
+		return Promise.all(contextRequests)
 	};
 
 	const endDialog = () => {
@@ -173,8 +176,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 		if (e.author === 'bot') return;
 
-		let defferFor = [Promise.resolve()];
-		let intent = getIntent(e);
+		let intent = getIntent(e);		
 		let dispatch = { 
 			say, 
 			setContext,
@@ -182,27 +184,23 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			action: _.partial(dispatchAction, { message: e }),
 		};
 
+		this.cognitiveFunction = 'evaluation';
+
+		// run the solutions, passing dispatch and the meaning of the message. If they return a promise, we will wait for them
+		// to complete before continuing
 		try {
 			if (!intent || intent.solutions.length === 0) {
 				defaultResponse(dispatch, e.meaning);
+				this.cognitiveFunction = 'idle'
 			} else {
-				// run the solutions, passing dispatch and the meaning of the message. If they return a promise, we will wait for them
-				// to complete before continuing
-				defferFor = defferFor.concat(intent.solutions.map(fn => fn(dispatch, e.meaning)));
+				let queue = getGeneratorFromFnArray(intent.solutions, [dispatch, e.meaning]);
+				queue.then(e => this.cognitiveFunction = 'idle');
 			}
 		} catch(e) {
 			console.log(e);
 		}
 
-		Promise.all(defferFor)
-			.then(() => {
-				this.cognitiveFunction = 'idle';
-				this.reactionStream.trigger();
-			});
-
 	};
-
-	const reactionSubscription = e => e();
 
 	/*
 	*	LIFECYCLE
@@ -213,11 +211,6 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	this.begin = function() {
 		if (subscriptions.length) return;
 		subscriptions.push(this.messageStream.observe(observeSubscription, errorHandler));
-		subscriptions.push(
-			this.reactionStream
-				.bufferWhile(e => this.cognitiveFunction !== 'idle')
-				.flatten()
-				.observe(reactionSubscription, errorHandler));
 	};
 
 	this.end = function() {

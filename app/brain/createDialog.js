@@ -24,21 +24,6 @@ function intent(dialogName, name, initialIntent) {
 		solutions: []
 	};
 
-	// push the initial solution to set the correct context. This will only trigger for the initial intent.
-	definition.solutions.push((dispatch, response) => {
-		if (!_.find(response.contexts, context => context.name === dialogName)) {
-			let fulfill = fulfilment().setContext(dialogName);
-			return fulfill(dispatch, response);
-		}
-		return (()=>{});
-	});
-
-	// solution = (dispatch, response) => {
-	// 	let fulfilment = fulfilmentFn(response);
-	// 	if (fulfilment.isFulfilment !== true) throw new Error('You must return a proper fulfilment function when using fulfillWith');
-	// 	return fulfilment(dispatch, response);
-	// };
-
 	const Factory = function() {
 
 		this.definition = definition;
@@ -116,14 +101,22 @@ function intent(dialogName, name, initialIntent) {
 		};
 
 		this.fulfillWith = function(fulfilmentFn) {
-			let solution = fulfilmentFn;
-			if (fulfilmentFn.isFulfilment !== true) {
-				solution = (dispatch, response) => {
-					let fulfilment = fulfilmentFn(response);
-					if (fulfilment.isFulfilment !== true) throw new Error('You must return a proper fulfilment function when using fulfillWith');
-					return fulfilment(dispatch, response);
-				};
-			}
+			
+			let solution = (dispatch, response) => {
+
+				let prom = Promise.resolve()
+
+				let mappedDispatch = _.mapValues(dispatch, fn => {
+					return function() { 
+						prom = prom.then(() => fn.apply(null, [...arguments]));
+						_.assign(prom, mappedDispatch);
+						return prom;
+					}
+				});
+
+				return fulfilmentFn(mappedDispatch, response);
+			};
+
 			this.definition.solutions.push(solution);
 			return this;
 		};
@@ -133,6 +126,16 @@ function intent(dialogName, name, initialIntent) {
 			this.definition.contexts = _.union(this.definition.contexts, contexts);
 			return this;
 		}
+
+
+		// SETUP
+
+		// push the initial solution to set the correct context. This will only trigger for the initial intent.
+		this.fulfillWith((dispatch, response) => {
+			if (!_.find(response.contexts, context => context.name === dialogName)) {
+				return dispatch.setContext(dialogName);
+			}
+		});
 
 	}
 
