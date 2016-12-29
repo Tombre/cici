@@ -1,7 +1,28 @@
-var admin = require("firebase-admin");
-var serviceAccount = require("path/to/serviceAccountKey.json");
+var mongoose = require('mongoose');
+const config = require('../../config.json')["mongodb"];
 
-admin.initializeApp({
-	credential: admin.credential.cert(serviceAccount),
-	databaseURL: "https://<DATABASE_NAME>.firebaseio.com"
+/*----------------------------------------------------------
+Setup
+----------------------------------------------------------*/
+
+mongoose.connect(`mongodb://localhost/${config.dbName}`);
+
+const Users = mongoose.model('Users', { 
+	givenName: String,
+	lastName: String
 });
+
+/*----------------------------------------------------------
+Helper
+----------------------------------------------------------*/
+
+function query() {}
+
+/*----------------------------------------------------------
+Exports
+----------------------------------------------------------*/
+
+module.exports = {
+	Users
+}
+

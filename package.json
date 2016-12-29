@@ -19,6 +19,7 @@
     "kefir": "^3.6.0",
     "lodash": "^4.17.2",
     "makerule": "^1.0.3",
+    "mongoose": "^4.7.5",
     "request": "^2.79.0",
     "require-dir-all": "^0.4.10",
     "superagent": "^3.2.0",
