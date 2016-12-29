@@ -47,7 +47,7 @@ AI
 ----------------------------------------------------------*/
 
 function returnObservableMeaning(convo, event) {
-	let request = query(event.text, { sessionId : convo.id });
+	let request = query(event.text, convo.contexts, { sessionId : convo.id });
 	return kefir.fromPromise(request)
 		.map(e => {
 			return e.result;
@@ -103,6 +103,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	this.adapter = sourceEvent.adapterID;
 	
 	this.transcript = [];
+	this.contexts = [];
 	this.status = 'active';
 	this.latestActivity = Date.now();	
 	this.cognitiveFunction = 'idle';
@@ -145,19 +146,27 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		return Promise.resolve();
 	};
 
-	const setContext = (context, lifespan) => {
+	// sets an array of contexts to the conversation. Does not add duplicates
+	const setContext = (context, prime = false) => {
 		let contexts = _.isArray(context) ? context : [context];
-		let contextRequests = contexts.map(context => POST('contexts', { sessionId: this.id }, { 
-			name: context, 
-			lifespan: lifespan || 1
-		}));
-		return Promise.all(contextRequests);
+		contexts = contexts.map(c => ({
+			name: c,
+			lifespan: 1,
+			prime
+		}))
+		this.contexts = _.unionBy(this.contexts, contexts, 'name');
+		return Promise.resolve(this.contexts);
 	};
 
+	// Clear contexts. Clears all but the prime context if none are passed. To clear the prime you must clear manually
 	const clearContext = (context) => {
-		let contexts = _.isArray(context) ? context : [context];
-		let contextRequests = contexts.map(context => DELETE(`contexts/${context}`, { sessionId: this.id }));
-		return Promise.all(contextRequests)
+		if (context) {
+			let contexts = _.isArray(context) ? context : [context];
+			this.contexts = _.without(this.contexts, ...contexts);	
+		} else {
+			this.contexts = _.remove(this.contexts, c => c.prime === false);
+		}
+		return Promise.resolve(this.contexts);
 	};
 
 	const endDialog = () => {
@@ -194,7 +203,11 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 				this.cognitiveFunction = 'idle'
 			} else {
 				let queue = getGeneratorFromFnArray(intent.solutions, [dispatch, e.meaning]);
-				queue.then(e => this.cognitiveFunction = 'idle');
+				queue
+					.then(e => {
+						this.cognitiveFunction = 'idle'
+					})
+					.catch(e => console.log(e));
 			}
 		} catch(e) {
 			console.log(e);

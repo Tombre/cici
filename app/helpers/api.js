@@ -34,12 +34,13 @@ function req(type, entity, query, body) {
 	})
 }
 
-function query(text, options) {
+function query(text, contexts, options) {
 	let config =  _.assign({ 
 		query: text,
+		contexts,
 		lang: 'en' 
 	}, options);
-	return req('get', 'query', config)
+	return req('post', 'query', null, config)
 		.catch(e => console.log(e));
 }
 
