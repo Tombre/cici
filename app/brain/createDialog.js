@@ -64,7 +64,7 @@ function intent(dialogName, name, initialIntent) {
 				let def = { data: [], isTemplate };
 
 				// when there is no template 
-				if (saying.indexOf('<||>') <= 0) {
+				if (saying.indexOf('<||>') === -1) {
 					def.data.push({ text: saying });
 					return def;
 				}
@@ -133,7 +133,7 @@ function intent(dialogName, name, initialIntent) {
 		// push the initial solution to set the correct context. This will only trigger for the initial intent.
 		this.fulfillWith((dispatch, response) => {
 			if (!_.find(response.contexts, context => context.name === dialogName)) {
-				return dispatch.setContext(dialogName);
+				return dispatch.setContext(dialogName, true);
 			}
 		});
 
