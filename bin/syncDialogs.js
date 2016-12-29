@@ -187,8 +187,8 @@ let entityPromise = api.GET('entities')
 	.then(api_intents => getNewIntents(api_intents, local_intents))
 	.then(newIntents => syncNewIntents(newIntents))
 	.then(savedIntents => {
-		// console.log(savedIntents);
 		log.success('Intents sync complete');
+		process.exit();
 	})
 	.catch(e => { 
 		log.error('Error syncing intents.', 'ERROR:', e);
