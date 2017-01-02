@@ -210,7 +210,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 		log(`Message recieved`, e);
 
-		let intent = getIntent(e);		
+		let intent = getIntent(e);	
 		let dispatch = { 
 			say, 
 			log,
@@ -222,12 +222,6 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 		this.cognitiveFunction = 'evaluation';
 
-		log(`Intent interpretation and evaluation`,  { 
-			name: intent.name,
-			initialIntent: intent.initialIntent,
-			dialog: intent.dialog
-		});
-		
 		let catchError = (e => {
 			say(`Sorry, an error occured and I am unable to complete your request`);
 			log(`Failed to evaluate solutions`,  { intent, message: e });
@@ -236,10 +230,19 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		// run the solutions, passing dispatch and the meaning of the message. If they return a promise, we will wait for them
 		// to complete before continuing
 		try {
+
 			if (!intent || intent.solutions.length === 0) {
+				log(`No matching intent, running default response`);
 				defaultResponse(dispatch, e.meaning);
 				this.cognitiveFunction = 'idle'
 			} else {
+
+				log(`Intent interpretation and evaluation`,  { 
+					name: intent.name,
+					initialIntent: intent.initialIntent,
+					dialog: intent.dialog
+				});
+
 				let queue = getGeneratorFromFnArray(intent.solutions, [dispatch, e]);
 				queue
 					.then(e => {

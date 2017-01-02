@@ -22,7 +22,7 @@ function removeConversation(conversations, convo) {
 
 function getIntent(intents, event) {
 	let action = event.meaning.action;
-	if (intents[action]) {
+	if (action && intents[action]) {
 		return intents[action].definition;
 	};
 }
