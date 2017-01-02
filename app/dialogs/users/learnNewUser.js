@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const createDialog = require('brain/createDialog');
-const { Users } = require('memory');
+const { Users, profileTypes } = require('memory/user');
 
 module.exports = createDialog('learnNewUser', dialog => {
 
@@ -8,22 +8,38 @@ module.exports = createDialog('learnNewUser', dialog => {
 	Options setup
 	----------------------------------------------------------*/
 
-	const userConfiguration = {};
+	const userConfiguration = {
+		givenName: '',
+		lastName: '',
+		profiles: []
+	};
+
+	let currentProfile = '';
+
+	/*----------------------------------------------------------
+	Helper
+	----------------------------------------------------------*/
+
+	function findContextProperty(contextName) {
+		let indexOfProp = contextName.indexOf('.');
+		if (indexOfProp >= 0) {
+			return contextName.substr(indexOfProp + 1);
+		}
+	}
 
 	/*----------------------------------------------------------
 	Fullfillment
 	----------------------------------------------------------*/
 
-	function saveUser(dispatch, config) {
+	function fulfillWithProfileSetup(dispatch, response) {
 		return dispatch
-			.say('understood, saving new user.')
-			.action('saveUser', { user: config })
-			.endDialog()
+			.setContext('setup-profile')
+			.say(`Would you like to setup any profiles for this user? At the moment I can learn from any of these:  ${profileTypes.join(', ')}`)
 	}
 
 	function evaluateForExistingUser(dispatch, response) {
 		
-		let { givenName, lastName, fullname } = response.parameters;
+		let { givenName, lastName, fullname } = response.meaning.parameters;
 		
 		if (fullname) {
 			givenName = fullname.split(' ')[0];
@@ -33,18 +49,18 @@ module.exports = createDialog('learnNewUser', dialog => {
 		return Users.findOne({ givenName, lastName }).exec()
 			.then(user => {
 				if (user) return (dispatch
-					.setContext('user-exists')
+					.setContext('create-user-where-name-exists')
 					.say(`${user.givenName} already exists, would you like to create another person by this name?`));
 				
 				userConfiguration.givenName = givenName;
 				userConfiguration.lastName = lastName;
 				
-				return saveUser(dispatch, userConfiguration)
+				return fulfillWithProfileSetup(dispatch, userConfiguration)
 			})
 	}
 
 	/*----------------------------------------------------------
-	Intents
+	Initial Intent
 	----------------------------------------------------------*/
 
 	// NEW USER
@@ -67,17 +83,21 @@ module.exports = createDialog('learnNewUser', dialog => {
 				`I'd you to learn about ${params.givenName('William')} ${params.lastName('Joe Shatner')}`
 			])
 			.fulfillWith((dispatch, response) => {
-				let { givenName, lastName } = response.parameters;
+				let { givenName, lastName } = response.meaning.parameters;
 				if (givenName) return evaluateForExistingUser(dispatch, response);
 				return dispatch
-					.setContext('set-user-details')
+					.setContext('set-user-name')
 					.say(`What is the users name?`);
 			})
 	)
 
+	/*----------------------------------------------------------
+	Naming
+	----------------------------------------------------------*/
+
 	dialog.registerIntent(
-		dialog.intent('set-user')
-			.requires('set-user-details')
+		dialog.intent('set-user-name')
+			.requires('set-user-name')
 			.params([
 				dialog.param('givenName').entity('sys.given-name'),
 				dialog.param('lastName').entity('sys.last-name'),
@@ -89,25 +109,91 @@ module.exports = createDialog('learnNewUser', dialog => {
 				`${params.fullname()}`,
 			], true)
 			.fulfillWith((dispatch, response) => {
-				let { givenName, lastName, fullname } = response.parameters;
+				let { givenName, lastName, fullname } = response.meaning.parameters;
 				if (givenName || lastName || fullname) return evaluateForExistingUser(dispatch, response);
 			})
 	)
 
+	/*----------------------------------------------------------
+	Where name already exists
+	----------------------------------------------------------*/
+
 	dialog.registerIntent(
-		dialog.intent.approval('user-exists')
+		dialog.intent.approval('create-user-where-name-exists')
 			.fulfillWith((dispatch, response) => {
-				return saveUser(dispatch, userConfiguration);
+				return fulfillWithProfileSetup(dispatch, userConfiguration);
 			}))
 
 	dialog.registerIntent(
-		dialog.intent.refusal('user-exists')
+		dialog.intent.refusal('create-user-where-name-exists')
 			.fulfillWith((dispatch, response) => {
 				return dispatch
 					.say('Ok')
 					.endDialog()
 			}))
 
+	/*----------------------------------------------------------
+	Setup Profile
+	----------------------------------------------------------*/
+
+	dialog.registerIntent(
+		dialog.intent('setup-profile')
+			.requires('setup-profile')
+			.params([
+				dialog.param('profileType').entity('service'),
+			])
+			.userSays(params => {
+				let examples = [
+					`setup ${params.profileType('Facebook')}`,
+					`setup profile for ${params.profileType('Twitter')}`,
+					`${params.profileType('Slack')}`
+				];
+				examples = examples.concat(profileTypes.map(type => params.profileType(type)));
+				return examples;
+			})
+			.fulfillWith((dispatch, response) => {
+				let { profileType } = response.meaning.parameters;
+				if (!profileType) return dispatch.setContext('setup-profile').say(`sorry, I'm not able to setup that profile type. I can setup any of these: ${profileTypes.join(', ')}`);
+				if (!_.find(userConfiguration.profiles, { type: profileType })) {
+					userConfiguration.profiles.push({ type: profileType });
+				}
+				return dispatch
+					.setContext(['setup-profile', { name: 'setup-profile-link', parameters: { profileType } }])
+					.say(`What is the link to the users ${profileType}?`);
+			}));
+
+	dialog.registerIntent(
+		dialog.intent('setup-profile-link')
+			.requires('setup-profile-link')
+			.params([
+				dialog.param('profileLink').entity('sys.any')
+			])
+			.userSays(params => [
+				`${params.profileLink()}`
+			], true)
+			.fulfillWith((dispatch, response) => {
+
+				let { profileLink } = response.meaning.parameters;
+				let profileType = _.find(response.meaning.contexts, { name: 'setup-profile-link' }).parameters.profileType;
+				
+				if (userConfiguration.profiles[profileType]) {
+					userConfiguration.profiles[profileType].link = profileLink;
+				}
+
+				return dispatch
+					.setContext('setup-profile')
+					.say(`Added profile for ${profileType}. Would you like to setup another profile?`);
+				
+			}));
+
+	dialog.registerIntent(
+		dialog.intent.refusal('setup-profile')
+			.fulfillWith((dispatch, response) => {
+				return dispatch
+					.say('Ok, saving user')
+					.action('saveUser', { user: userConfiguration })
+					.endDialog()
+			}))
 
 
 });

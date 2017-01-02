@@ -100,8 +100,8 @@ module.exports = createDialog('createBouquet', dialog => {
 			])
 			.userSays(params => [`add ${params.colour()} ${params.flowerType()}`], true)
 			.fulfillWith((dialog, response) => {
-				let colour = response.parameters.colour;
-				let flowerType = response.parameters.flowerType
+				let colour = response.meaning.parameters.colour;
+				let flowerType = response.meaning.parameters.flowerType
 				if (colour && flowerType) {
 					boquetConfiguration.colours.concat(colour);
 					boquetConfiguration.flowerTypes.concat(flowerType);
