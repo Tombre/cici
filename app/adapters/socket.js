@@ -1,10 +1,9 @@
 const createAdapter = require('brain/createAdapter');
 const config = require('../../config.json')["socket"];
+const app = require('http').createServer();
+const io = require('socket.io')(app);
 
 module.exports = createAdapter('socket', function(readMessage, onSayEvent) {
-
-	const app = require('http').createServer();
-	const io = require('socket.io')(app);
 
 	io.on('connection', socket => {
 	
@@ -20,10 +19,10 @@ module.exports = createAdapter('socket', function(readMessage, onSayEvent) {
 			}, true);
 		});
 
-		onSayEvent(event => {
-			socket.broadcast.emit('say', event);	
-		});
+	});
 
+	onSayEvent(event => {
+		io.sockets.emit('say', event);	
 	});
 
 	const port = process.env.PORT || config.port;

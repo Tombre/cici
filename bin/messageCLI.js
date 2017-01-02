@@ -1,8 +1,11 @@
 const blessed = require('blessed');
 const io = require('socket.io-client');
 const config = require('../config.json')["socket"];
+const chalk = require('chalk');
 
-const socket = io(`http://localhost:${config.port}`);
+let socket = io(`http://localhost:${config.port}`, {
+	reconnection: true
+});
 
 const screen = blessed.screen({
 	smartCSR: true,
@@ -52,15 +55,23 @@ input.key('enter', () => {
 	input.focus();
 });
 
-socket.on('say', (event) => {
-	chatLog.log(`-> Cici: ${event.text}`);
-});
-
 input.key(['C-c'], () => process.exit(0));
 
 screen.append(chatBox);
 screen.append(inputBox);
 
-screen.render();
+socket.on( 'connect', () => {
+	chatLog.log(chalk.green(`...Connected`));
+});
 
+socket.on('say', (event) => {
+	chatLog.log(`-> Cici: ${event.text}`);
+});
+
+socket.on( 'disconnect', () => {
+	chatLog.log(chalk.red(`Disconnected from chat... Trying to reconnect`));
+	screen.render();
+});
+
+screen.render();
 input.focus();
