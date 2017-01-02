@@ -20,14 +20,6 @@ function removeConversation(conversations, convo) {
 	return _.without(conversations, [convo]);
 }
 
-function getSolutions(solutions, event) {
-	let action = event.meaning.action;
-	if (solutions[action]) {
-		return solutions[action]
-	};
-	return [];
-}
-
 function getIntent(intents, event) {
 	let action = event.meaning.action;
 	if (intents[action]) {
@@ -57,19 +49,6 @@ module.exports = function(adapters, actions, dialogs, entities) {
 		return _.assign({}, accum, dialog.intents);
 	}, {});
 
-	const solutions = _.reduce(dialogs, (accum, dialog) => {
-		let solutions = _.mapValues(dialog.intents, intent => {
-			return intent.definition.solutions;
-		});
-		return _.assign({}, accum, dialog.intents, solutions);
-	}, {})
-
-	/*----------------------------------------------------------
-	Dialogs
-	----------------------------------------------------------*/
-
-	// Plug dialogs push stream into event stream.
-
 	/*----------------------------------------------------------
 	Conversations
 	----------------------------------------------------------*/
@@ -93,6 +72,8 @@ module.exports = function(adapters, actions, dialogs, entities) {
 	/*----------------------------------------------------------
 	Action Fulfillment
 	----------------------------------------------------------*/
+
+	// fulfills an action by running it's associated function.
 
 	filterbyEventType(ACTION_FULFILL, eventStream)
 		.map(e => e.payload)
