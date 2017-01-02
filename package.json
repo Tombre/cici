@@ -7,12 +7,14 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "NODE_PATH=./app/ nodemon index.js --harmony",
     "sync": "NODE_PATH=./app/ node ./bin/syncDialogs.js --harmony",
-    "reset": "NODE_PATH=./app/ node ./bin/resetAPI.js --harmony"
+    "reset": "NODE_PATH=./app/ node ./bin/resetAPI.js --harmony",
+    "chat": "node ./bin/messageCLI.js --harmony"
   },
   "author": "Thomas Leenders <leenders.thomas@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "apiai": "^3.0.3",
+    "blessed": "^0.1.81",
     "chalk": "^1.1.3",
     "express": "^4.14.0",
     "firebase-admin": "^4.0.3",
@@ -20,8 +22,10 @@
     "lodash": "^4.17.2",
     "makerule": "^1.0.3",
     "mongoose": "^4.7.5",
+    "prettyjson": "^1.2.1",
     "request": "^2.79.0",
     "require-dir-all": "^0.4.10",
+    "socket.io": "^1.7.2",
     "superagent": "^3.2.0",
     "winston": "^2.3.0"
   },
