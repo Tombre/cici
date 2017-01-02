@@ -10,7 +10,7 @@ const screen = blessed.screen({
 });
 
 const chatBox = blessed.box({
-	label: 'Chats',
+	label: 'Chat',
 	width: '100%',
 	height: '100%-3',
 	border: {
@@ -24,10 +24,9 @@ const chatLog = blessed.log({
 	scrollable: true,
 	alwaysScroll: true,
 	scrollbar: {
-		ch: '',
+		ch: ' ',
 		inverse: true,
-	},
-	mouse: true,
+	}
 });
 
 const inputBox = blessed.box({
@@ -53,13 +52,11 @@ input.key('enter', () => {
 	input.focus();
 });
 
-socket.on('say', ({ text }) => {
-	chatLog.log(`-> Cici: ${text}`);
+socket.on('say', (event) => {
+	chatLog.log(`-> Cici: ${event.text}`);
 });
 
-input.key(['escape', 'q', 'C-c'], function(ch, key) {
-	return process.exit(0);
-});
+input.key(['C-c'], () => process.exit(0));
 
 screen.append(chatBox);
 screen.append(inputBox);
