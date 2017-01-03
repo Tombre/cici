@@ -2,7 +2,7 @@ var mongoose = require('mongoose');
 
 const profileTypes = ['Facebook', 'Slack', 'Twitter'];
 
-const Users = mongoose.model('Users', { 
+const userShema = mongoose.Schema({
 	givenName: String,
 	lastName: String,
 	profiles: [{
@@ -12,7 +12,9 @@ const Users = mongoose.model('Users', {
 	}]
 });
 
+const User = mongoose.model('User', userShema);
+
 module.exports = {
-	Users,
+	User,
 	profileTypes
 }
