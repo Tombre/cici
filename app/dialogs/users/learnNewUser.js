@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const createDialog = require('brain/createDialog');
-const { Users, profileTypes } = require('memory/user');
+const { User, profileTypes } = require('memory/user');
 
 module.exports = createDialog('learnNewUser', dialog => {
 
@@ -46,7 +46,7 @@ module.exports = createDialog('learnNewUser', dialog => {
 			lastName = fullname.split(' ')[1];
 		}
 
-		return Users.findOne({ givenName, lastName }).exec()
+		return User.findOne({ givenName, lastName })
 			.then(user => {
 				if (user) return (dispatch
 					.setContext('create-user-where-name-exists')
@@ -57,6 +57,7 @@ module.exports = createDialog('learnNewUser', dialog => {
 				
 				return fulfillWithProfileSetup(dispatch, userConfiguration)
 			})
+			.catch(e => console.log(e))
 	}
 
 	/*----------------------------------------------------------
@@ -175,10 +176,12 @@ module.exports = createDialog('learnNewUser', dialog => {
 
 				let { profileLink } = response.meaning.parameters;
 				let profileType = _.find(response.meaning.contexts, { name: 'setup-profile-link' }).parameters.profileType;
+				let config = _.find(userConfiguration.profiles, { type: profileType});
 				
-				if (userConfiguration.profiles[profileType]) {
-					userConfiguration.profiles[profileType].link = profileLink;
-				}
+				console.log(profileType, profileLink);
+				console.log(userConfiguration.profiles);
+
+				if (config) config.link = profileLink;
 
 				return dispatch
 					.setContext('setup-profile')
@@ -191,7 +194,7 @@ module.exports = createDialog('learnNewUser', dialog => {
 			.fulfillWith((dispatch, response) => {
 				return dispatch
 					.say('Ok, saving user')
-					.action('saveUser', { user: userConfiguration })
+					.action('newUser', { user: userConfiguration })
 					.endDialog()
 			}))
 
