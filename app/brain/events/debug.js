@@ -9,19 +9,19 @@ Events
 ----------------------------------------------------------*/
 
 const DEBUG_TOGGLE = 'DEBUG_TOGGLE';
-function debugToggle(toggle, conversationID) {
+function debugToggle(toggle, author) {
 	return {
 		type: DEBUG_TOGGLE,
-		conversationID,
+		author,
 		payload: { toggle }
 	}
 }
 
 const DEBUG_EVENT = 'DEBUG_EVENT';
-function debugEvent(contents, conversationID) {
+function debugEvent(contents, author) {
 	return {
 		type: DEBUG_EVENT,
-		conversationID,
+		author,
 		payload: {
 			contents
 		}

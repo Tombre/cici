@@ -6,5 +6,5 @@ Intent
 ----------------------------------------------------------*/
 
 module.exports = createAction('debugMode', function(dispatch, params) {
-	dispatch(debugToggle(params.enabled, params.conversationID));
+	dispatch(debugToggle(params.enabled, params.author));
 });

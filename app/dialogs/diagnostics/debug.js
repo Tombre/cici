@@ -16,7 +16,7 @@ module.exports = createDialog('debug', dialog => {
 			])
 			.fulfillWith((dialog, response) => {
 				return dialog
-					.action('debugMode', { enabled: true, conversationID: response.conversationID })
+					.action('debugMode', { enabled: true, author: response.author })
 					.clearContext(true)
 					.say('Debug mode started')
 			}))
@@ -34,7 +34,7 @@ module.exports = createDialog('debug', dialog => {
 			])
 			.fulfillWith((dialog, response) => {
 				return dialog
-					.action('debugMode', { enabled: false, conversationID: response.conversationID })
+					.action('debugMode', { enabled: false, author: response.author })
 					.clearContext(true)
 					.say('Debug mode stopped')
 			}))

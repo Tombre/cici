@@ -192,7 +192,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	};
 
 	const log = (description, event) => {
-		eventStream.dispatch(debugEvent({ description, event }, this.id));
+		eventStream.dispatch(debugEvent({ description, event }, this.participant));
 	}
 
 	/*----------------------------------------------------------
@@ -259,7 +259,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	// subscribes to a debug handler this coversation. This will write logs into the conversation if those logs match the current conversation
 	const debugSubscription = () => {
 
-		let convoFilter = (e => e && e.conversationID && e.conversationID === this.id); 
+		let convoFilter = (e => (e && e.author && e.author === this.participant)); 
 
 		return filterbyEventType(DEBUG_TOGGLE, eventStream)
 			.filter(convoFilter)
