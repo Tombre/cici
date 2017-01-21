@@ -1,14 +1,28 @@
 const ProgressBar = require('progress');
 const _ = require('lodash');
-const { flattenGroup } = require('helpers/modules');
-const dialogs = flattenGroup(require('require-dir-all')('../app/dialogs/', { recursive: true }));
-const entities = flattenGroup(require('require-dir-all')('../app/entities/', { recursive: true }));
+
+const dialogs = require('../app/dialogs')
+const entities = require('../app/entities')
+
 const api = require('helpers/api');
 const chalk = require('chalk');
 
 /*----------------------------------------------------------
+Setup
+----------------------------------------------------------*/
+
+const config = {};
+
+/*----------------------------------------------------------
 Helper
 ----------------------------------------------------------*/
+
+function mapFromModuleToLIst(modules, key, evaluate) {
+	return _.reduce(modules, (accum, module) => {
+		module = evaluate(module);
+		return _.assign({}, accum, { [module[key]] : module });
+	}, {});
+}
 
 function logger(format, toLog) {
 	console.log(format(toLog[0]));
@@ -34,8 +48,7 @@ Intents
 ----------------------------------------------------------*/
 
 function getSystemIntents() {
-	return _.chain(dialogs)
-		.mapValues(dialog => dialog())
+	return _.chain(mapFromModuleToLIst(dialogs, 'name', dialog => dialog(config)))
 		.reduce((accum, dialog) => _.assign({}, accum, dialog.intents), {})
 		.map(mapSystemIntent)
 		.value();
@@ -128,8 +141,7 @@ function mapSystemEntity(entity) {
 }
 
 function getSystemEntities() {
-	return _.chain(entities)
-		.mapValues(entity => entity())
+	return _.chain(mapFromModuleToLIst(entities, 'name', entity => entity(config)))
 		.reject(entity => {
 			return entity.name.indexOf('sys') === 0;
 		})

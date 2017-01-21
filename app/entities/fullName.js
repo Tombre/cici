@@ -8,6 +8,4 @@ let fullName = createEntity('fullName')
 		`${givenName()} ${lastName()}`
 	])
 
-module.exports = {
-	fullName
-};
+module.exports = fullName;

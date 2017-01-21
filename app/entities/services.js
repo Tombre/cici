@@ -4,6 +4,4 @@ const { profileTypes } = require('memory/user');
 let service = createEntity('service')
 	.entries([...profileTypes])
 
-module.exports = {
-	service
-};
+module.exports = service;

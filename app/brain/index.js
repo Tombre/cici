@@ -50,7 +50,7 @@ module.exports = function(adapters, actions, dialogs, entities) {
 	adapters = mapFromModuleToLIst(adapters, 'id', adapter => adapter(eventStream, config));
 	actions = mapFromModuleToLIst(actions, 'id', action => action(config));
 	dialogs = mapFromModuleToLIst(dialogs, 'name', dialog => dialog(config));
-	entities = _.mapValues(entities, 'name', entity => entity(config));
+	entities = mapFromModuleToLIst(entities, 'name', entity => entity(config));
 
 	const intents = _.reduce(dialogs, (accum, dialog) => {
 		return _.assign({}, accum, dialog.intents);
