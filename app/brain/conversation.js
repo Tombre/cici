@@ -26,6 +26,7 @@ function doesConvoMatchEvent(convo, event) {
 		(convo.latestActivity <= event.timestamp) &&
 		((event.timestamp - convo.latestActivity) < convoTimeout) &&
 		(convo.adapter === event.adapterID) &&
+		(_.isEqual(convo.source, event.source)) &&
 		true
 	);
 }
@@ -103,12 +104,14 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	this.id = uuid();
 	this.participant = sourceEvent.author;
 	this.adapter = sourceEvent.adapterID;
-	
+	this.source = sourceEvent.source || {};
+
 	this.transcript = [];
 	this.contexts = [];
 	this.status = 'active';
 	this.latestActivity = Date.now();	
 	this.cognitiveFunction = 'idle';
+	this.state = {};
 
 	// the steam of all messages within this conversation. For every message the meaning is interpereted. While this is occurring, ongoing messages are ignored
 	this.messageStream = getFilteredStream.call(this, filterRead)
@@ -138,7 +141,8 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	const say = (text) => {
 		eventStream.dispatch(sendMessage({
 			text: text,
-			adapterID: this.adapter
+			adapterID: this.adapter,
+			source: this.source
 		}));
 		return Promise.resolve();
 	};
@@ -195,6 +199,19 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		eventStream.dispatch(debugEvent({ description, event }, this.participant));
 	}
 
+	const setState = (state) => {
+		if (!_.isPlainObject(state)) throw new Error('setState must be passed a plain object representing a state object');
+		log(`setting conversation state`, { prev: this.state, new: state });
+		this.state = _.assign({}, this.state, state);
+		return Promise.resolve(this.state);
+	}
+
+	const clearState = () => {
+		log(`clearing conversation state`);
+		this.state = {};
+		return Promise.resolve(this.state);
+	}
+
 	/*----------------------------------------------------------
 	Subscriptions
 	----------------------------------------------------------*/
@@ -217,6 +234,8 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			setContext,
 			clearContext,
 			endDialog,
+			setState,
+			clearState,
 			action: _.partial(dispatchAction, { message: e }),
 		};
 
@@ -225,6 +244,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		let catchError = (e => {
 			say(`Sorry, an error occured and I am unable to complete your request`);
 			log(`Failed to evaluate solutions`,  { intent, message: e });
+			console.log(e);
 		});
 
 		// run the solutions, passing dispatch and the meaning of the message. If they return a promise, we will wait for them
@@ -233,7 +253,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 			if (!intent || intent.solutions.length === 0) {
 				log(`No matching intent, running default response`);
-				defaultResponse(dispatch, e.meaning);
+				defaultResponse(dispatch, e.meaning, this.state);
 				this.cognitiveFunction = 'idle'
 			} else {
 
@@ -243,7 +263,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 					dialog: intent.dialog
 				});
 
-				let queue = getGeneratorFromFnArray(intent.solutions, [dispatch, e]);
+				let queue = getGeneratorFromFnArray(intent.solutions, [dispatch, e, this.state]);
 				queue
 					.then(e => {
 						this.cognitiveFunction = 'idle'

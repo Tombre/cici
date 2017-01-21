@@ -184,8 +184,8 @@ Fulfilment
 function fulfilment() {
 
 	const chain = [];
-	const fn = function(dispatch, response) { 
-		let map = chain.map(eval => eval(dispatch, response));
+	const fn = function(dispatch, response, state) { 
+		let map = chain.map(eval => eval(dispatch, response, state));
 		return Promise.all(map);
 	}
 
@@ -223,6 +223,20 @@ function fulfilment() {
 	fn.endDialog = function() {
 		chain.push((dispatch, response) => {
 			return dispatch.endDialog();
+		});
+		return fn;
+	}
+
+	fn.setState = function() {
+		chain.push((dispatch, response) => {
+			return dispatch.setState();
+		});
+		return fn;
+	}
+
+	fn.clearState = function() {
+		chain.push((dispatch, response) => {
+			return dispatch.clearState();
 		});
 		return fn;
 	}

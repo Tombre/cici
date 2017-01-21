@@ -21,6 +21,7 @@ function recievedMessage(config) {
 	const defaults = {
 		text: '',
 		author: 1, 
+		source: {},
 		timestamp: Date.now(),
 		adapterEvent: null,
 		adapterID: null
@@ -43,6 +44,7 @@ function sendMessage(config) {
 	const defaults = {
 		text: '',
 		timestamp: Date.now(),
+		source: {},
 		adapterID: null,
 		author: 'bot'
 	};

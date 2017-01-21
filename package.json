@@ -13,6 +13,7 @@
   "author": "Thomas Leenders <leenders.thomas@gmail.com>",
   "license": "ISC",
   "dependencies": {
+    "@slack/client": "^3.8.1",
     "apiai": "^3.0.3",
     "blessed": "^0.1.81",
     "chalk": "^1.1.3",
