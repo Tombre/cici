@@ -10,6 +10,13 @@ const { ACTION_FULFILL } = require('brain/events/actions');
 Helper
 ----------------------------------------------------------*/
 
+function mapFromModuleToLIst(modules, key, evaluate) {
+	return _.reduce(modules, (accum, module) => {
+		module = evaluate(module);
+		return _.assign({}, accum, { [module[key]] : module });
+	}, {});
+}
+
 function generateEventStream() {
 	let pool = kefir.pool();
 	pool.dispatch = (e) => pool.plug(kefir.constant(e));
@@ -40,10 +47,10 @@ module.exports = function(adapters, actions, dialogs, entities) {
 	setup
 	----------------------------------------------------------*/
 
-	adapters = _.mapValues(adapters, adapter => adapter(eventStream, config));
-	actions = _.mapValues(actions, action => action(config));
-	dialogs = _.mapValues(dialogs, dialog => dialog(config));
-	entities = _.mapValues(entities, entity => entity(config));
+	adapters = mapFromModuleToLIst(adapters, 'id', adapter => adapter(eventStream, config));
+	actions = mapFromModuleToLIst(actions, 'id', action => action(config));
+	dialogs = mapFromModuleToLIst(dialogs, 'name', dialog => dialog(config));
+	entities = _.mapValues(entities, 'name', entity => entity(config));
 
 	const intents = _.reduce(dialogs, (accum, dialog) => {
 		return _.assign({}, accum, dialog.intents);
