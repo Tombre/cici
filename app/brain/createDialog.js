@@ -2,10 +2,6 @@ const _ = require('lodash');
 const kefir = require('kefir');
 
 /*----------------------------------------------------------
-Helper
-----------------------------------------------------------*/
-
-/*----------------------------------------------------------
 Intent
 ----------------------------------------------------------*/
 
@@ -102,19 +98,25 @@ function intent(dialogName, name, initialIntent) {
 
 		this.fulfillWith = function(fulfilmentFn) {
 			
-			let solution = (dispatch, response) => {
+			let solution = (dispatch, response, state) => {
 
 				let prom = Promise.resolve()
 
+				// The following lines are to allow the chaining dispatch methods. It also wraps the promise "then" so that
+				// you can also run dispatch methods from that
 				let mappedDispatch = _.mapValues(dispatch, fn => {
 					return function() { 
 						prom = prom.then(() => fn.apply(null, [...arguments]));
+						prom.then = ((...args) => _.assign(prom.then(...args), mappedDispatch));
 						_.assign(prom, mappedDispatch);
 						return prom;
 					}
 				});
 
-				return fulfilmentFn(mappedDispatch, response);
+				// _bindTo is a helper method which will allow us to bind dispatch methods to an object. Usefull for HOF creation
+				mappedDispatch._bindMethodsTo = (obj) => _.assign(obj, mappedDispatch);
+
+				return fulfilmentFn(mappedDispatch, response, state);
 			};
 
 			this.definition.solutions.push(solution);
@@ -178,74 +180,6 @@ function param(name, defaultValue) {
 }
 
 /*----------------------------------------------------------
-Fulfilment
-----------------------------------------------------------*/
-
-function fulfilment() {
-
-	const chain = [];
-	const fn = function(dispatch, response, state) { 
-		let map = chain.map(eval => eval(dispatch, response, state));
-		return Promise.all(map);
-	}
-
-	fn.isFulfilment = true;
-
-	fn.say= function(text) {
-		chain.push((dispatch, response) => {
-			text = _.isFunction(text) ? text(response.params) : text;
-			return dispatch.say(text);
-		});
-		return fn;
-	}
-
-	fn.action = function(name, params) {
-		let actionfn = (dispatch, response) => dispatch.action(name, params);
-		if (_.isFunction(name)) fn = (dispatch, response) => name(response);
-		chain.push(actionfn);
-		return fn;
-	}
-
-	fn.setContext= function(context, lifespan) {
-		chain.push((dispatch, response) => {
-			return dispatch.setContext(context, lifespan);
-		});
-		return fn;
-	}
-
-	fn.clearContext = function(context) {
-		chain.push((dispatch, response) => {
-			return dispatch.clearContext(context);
-		});
-		return fn;
-	}
-
-	fn.endDialog = function() {
-		chain.push((dispatch, response) => {
-			return dispatch.endDialog();
-		});
-		return fn;
-	}
-
-	fn.setState = function() {
-		chain.push((dispatch, response) => {
-			return dispatch.setState();
-		});
-		return fn;
-	}
-
-	fn.clearState = function() {
-		chain.push((dispatch, response) => {
-			return dispatch.clearState();
-		});
-		return fn;
-	}
-
-	return fn;
-
-}
-
-/*----------------------------------------------------------
 Dialog
 ----------------------------------------------------------*/
 
@@ -267,7 +201,6 @@ function Dialog(name) {
 	resolve.registerIntent = (intent) => { definition.intents[intent.definition.name] = intent };
 
 	resolve.param = param;
-	resolve.fulfilment = fulfilment;
 
 	return resolve;
 

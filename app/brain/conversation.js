@@ -191,6 +191,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 	const endDialog = () => {
 		log('Ending dialog');
+		clearState();
 		let removePromise = DELETE(`contexts`, { sessionId: this.id });
 		return removePromise.then(() => this.end());
 	};
@@ -212,30 +213,28 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		return Promise.resolve(this.state);
 	}
 
+	const mapToIntent = (intentName) => {
+		log(`mapping to intent`, { intentName });
+		return clearContext(true)
+			.then(() => {
+				let intent = getIntent(intentName);
+				let event = _.findLast(this.transcript, e => (e.author !== 'bot'));
+				evaluateIntentWithEvent(intent, event);
+			});
+	}
+
+
 	/*----------------------------------------------------------
 	Subscriptions
 	----------------------------------------------------------*/
 
-	// handles the evaluation of messages that are passed through the conversation object. This subscription evaluates the solutions of a matched
-	// dialog and runs associated functions.
-	const messageSubscription = () => this.messageStream.observe((e) => {
+	/*
+	*	Evaluate Intent
+	*	Takes an intent and evaluates it's solutions
+	*/
+	const evaluateIntentWithEvent = (intent, e) => {
 
-		this.transcript.push(e);
-		this.latestActivity = Date.now();
-
-		if (e.author === 'bot') return;
-
-		log(`Message recieved`, e);
-
-		let intent = getIntent(e);	
-		let dispatch = { 
-			say, 
-			log,
-			setContext,
-			clearContext,
-			endDialog,
-			setState,
-			clearState,
+		let dispatch = { say, log, setContext, clearContext, endDialog, setState, clearState, mapToIntent,
 			action: _.partial(dispatchAction, { message: e }),
 		};
 
@@ -274,13 +273,28 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			catchError(e);
 		}
 
+	}
+
+	// handles the evaluation of messages that are passed through the conversation object. This subscription evaluates the solutions of a matched
+	// dialog and runs associated functions.
+	const messageSubscription = () => this.messageStream.observe((e) => {
+		
+		this.transcript.push(e);
+		this.latestActivity = Date.now();
+		
+		if (e.author === 'bot') return;
+		
+		log(`Message recieved`, e);
+		let intent = getIntent(e.meaning.action);	
+		return evaluateIntentWithEvent(intent, e);
+
 	}, errorHandler);
 
 	// subscribes to a debug handler this coversation. This will write logs into the conversation if those logs match the current conversation
 	const debugSubscription = () => {
-
+		
 		let convoFilter = (e => (e && e.author && e.author === this.participant)); 
-
+		
 		return filterbyEventType(DEBUG_TOGGLE, eventStream)
 			.filter(convoFilter)
 			.flatMapLatest(e => {
