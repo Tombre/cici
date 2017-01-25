@@ -44,7 +44,11 @@ module.exports = createAdapter('slack', function(readMessage, onSayEvent) {
 
 
 	onSayEvent(event => {
-		rtm.sendMessage(event.text, event.source.channel);
+		let { text, source } = event;
+		if ((source.channel.charAt(0) === 'D') === false) {
+			text = `<@${source.user}> ${text}`;
+		}
+		rtm.sendMessage(text, event.source.channel);
 	});
 
 	rtm.start();
