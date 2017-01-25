@@ -1,6 +1,17 @@
 const _ = require('lodash');
 const createDialog = require('brain/createDialog');
 const { User, profileTypes } = require('memory/user');
+const { chooseFor } = require('helpers/response');
+
+/*----------------------------------------------------------
+Setup
+----------------------------------------------------------*/
+
+profileTypes = Object.keys(profileTypes).map(_.capitalize);
+
+/*----------------------------------------------------------
+Dialog
+----------------------------------------------------------*/
 
 module.exports = createDialog('learnNewUser', dialog => {
 
@@ -27,35 +38,45 @@ module.exports = createDialog('learnNewUser', dialog => {
 		}
 	}
 
+	function getFullNameFromFulfillment(response, state) {
+		let { fullnameParam } = response.meaning.parameters;
+		let { fullnameState } = state;
+		if (fullnameState) return fullnameState;
+		return fullnameParam;
+	}
+
 	/*----------------------------------------------------------
 	Fullfillment
 	----------------------------------------------------------*/
 
-	function fulfillWithProfileSetup(dispatch, response) {
+	function nameFulfillmentToProfileSetup(dispatch, response, state) {
+
+		let { userToCreate } = state;
+		let name = User.splitName(getFullNameFromFulfillment(response, state))
+
+		userToCreate = Object.assign(userToCreate, {
+			givenName: name[0],
+			lastName: name[1]
+		});
+
+		let idSentance = chooseFor(state.subjectMatter, {
+			'other': `Would you like to setup any profiles for this user?`,
+			'self': `Would you like to setup any profiles?`
+		})
+
 		return dispatch
+			.setState({ userToCreate })
 			.setContext('setup-profile')
-			.say(`Would you like to setup any profiles for this user? At the moment I can learn from any of these:  ${profileTypes.join(', ')}`)
+			.say(`${idSentance} At the moment I can learn from any of these:  ${profileTypes.join(', ')}`)
 	}
 
-	function evaluateForExistingUser(dispatch, response) {
-		
-		let { givenName, lastName, fullname } = response.meaning.parameters;
-		
-		if (fullname) {
-			givenName = fullname.split(' ')[0];
-			lastName = fullname.split(' ')[1];
-		}
-
-		return User.findOne({ givenName, lastName })
+	function evaluateForExistingUser(dispatch, response, state) {
+		return User.getUserFromNameInResponse(response)
 			.then(user => {
 				if (user) return (dispatch
 					.setContext('create-user-where-name-exists')
 					.say(`${user.givenName} already exists, would you like to create another person by this name?`));
-				
-				userConfiguration.givenName = givenName;
-				userConfiguration.lastName = lastName;
-				
-				return fulfillWithProfileSetup(dispatch, userConfiguration)
+				return nameFulfillmentToProfileSetup(dispatch, response, state)
 			})
 			.catch(e => console.log(e))
 	}
@@ -81,14 +102,23 @@ module.exports = createDialog('learnNewUser', dialog => {
 				`I'd like to introduce you too ${params.givenName('Joe')} ${params.lastName('Blogs')}`,
 				`I'd like to introduce you too ${params.givenName('Thomas')} ${params.lastName('Leenders')}`,
 				`I'd you to learn about ${params.givenName('William')}`,
-				`I'd you to learn about ${params.givenName('William')} ${params.lastName('Joe Shatner')}`
+				`I'd you to learn about ${params.givenName('William')} ${params.lastName('Shatner')}`
 			])
-			.fulfillWith((dispatch, response) => {
+			.fulfillWith((dispatch, response, state) => {
+				
+				if (!state.subjectMatter) {
+					dispatch = dispatch.setState({ subjectMatter: 'other' });
+				}
+
 				let { givenName, lastName } = response.meaning.parameters;
-				if (givenName) return evaluateForExistingUser(dispatch, response);
+				if (givenName) return evaluateForExistingUser(dispatch, response, state);
+
 				return dispatch
 					.setContext('set-user-name')
-					.say(`What is the users name?`);
+					.say(chooseFor(state.subjectMatter, {
+						'other': `What is the users name?`
+						'self': `What is your name?`
+					}));
 			})
 	)
 
@@ -111,7 +141,7 @@ module.exports = createDialog('learnNewUser', dialog => {
 			], true)
 			.fulfillWith((dispatch, response) => {
 				let { givenName, lastName, fullname } = response.meaning.parameters;
-				if (givenName || lastName || fullname) return evaluateForExistingUser(dispatch, response);
+				if (givenName || lastName || fullname) return evaluateForExistingUser(dispatch, response, state);
 			})
 	)
 
@@ -121,8 +151,8 @@ module.exports = createDialog('learnNewUser', dialog => {
 
 	dialog.registerIntent(
 		dialog.intent.approval('create-user-where-name-exists')
-			.fulfillWith((dispatch, response) => {
-				return fulfillWithProfileSetup(dispatch, userConfiguration);
+			.fulfillWith((dispatch, response, state) => {
+				return nameFulfillmentToProfileSetup(dispatch, response, state);
 			}))
 
 	dialog.registerIntent(
@@ -160,7 +190,10 @@ module.exports = createDialog('learnNewUser', dialog => {
 				}
 				return dispatch
 					.setContext(['setup-profile', { name: 'setup-profile-link', parameters: { profileType } }])
-					.say(`What is the link to the users ${profileType}?`);
+					.say(chooseFor(state.subjectMatter, {
+						'other': `What is the link to the users ${profileType}?`
+						'selft': `What is the link to your ${profileType}?`
+					}));
 			}));
 
 	dialog.registerIntent(
@@ -177,9 +210,6 @@ module.exports = createDialog('learnNewUser', dialog => {
 				let { profileLink } = response.meaning.parameters;
 				let profileType = _.find(response.meaning.contexts, { name: 'setup-profile-link' }).parameters.profileType;
 				let config = _.find(userConfiguration.profiles, { type: profileType});
-				
-				console.log(profileType, profileLink);
-				console.log(userConfiguration.profiles);
 
 				if (config) config.link = profileLink;
 
