@@ -2,7 +2,7 @@ const kefir = require('kefir');
 const _ = require('lodash');
 const uuid = require('uuid/v4');
 const prettyjson = require('prettyjson');
-const { query, config, POST, GET, DELETE } = require('helpers/api');
+const { query, DELETE } = require('helpers/api');
 const { filterRead, filterSend, filterbyEventType } = require('helpers/streams');
 const { sendMessage } = require('brain/events/message');
 const { fulfillAction } = require('brain/events/actions');
@@ -50,7 +50,9 @@ AI
 ----------------------------------------------------------*/
 
 function returnObservableMeaning(convo, event) {
-	let request = query(event.text, convo.contexts, { sessionId : convo.id });
+	// request the meaning and attach to observavle events. We reset context every time here, so we can avoid making additional requests and introducing
+	// asyncronous requests
+	let request = query(event.text, convo.contexts, { sessionId : convo.id, resetContexts: true });
 	return kefir.fromPromise(request)
 		.map(e => {
 			return e.result;
@@ -144,14 +146,12 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			adapterID: this.adapter,
 			source: this.source
 		}));
-		return Promise.resolve();
 	};
 
 	const dispatchAction = (defaults, name, params) => {
 		log(`Dispatching action`, { name, params });
 		let computed = _.assign({}, defaults, params);
 		eventStream.dispatch(fulfillAction(name, computed));
-		return Promise.resolve();
 	};
 
 	// sets an array of contexts to the conversation. Does not add duplicates
@@ -169,7 +169,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			}
 		});
 		this.contexts = _.unionBy(this.contexts, contexts, 'name');
-		return Promise.resolve(this.contexts);
+		return this.contexts;
 	};
 
 	// Clear contexts. Clears all but the prime context if none are passed. To clear the prime you must clear manually
@@ -186,14 +186,13 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 				this.contexts = _.remove(this.contexts, c => c.prime === false);
 			}
 		}
-		return Promise.resolve(this.contexts);
+		return this.contexts;
 	};
 
 	const endDialog = () => {
 		log('Ending dialog');
 		clearState();
-		let removePromise = DELETE(`contexts`, { sessionId: this.id });
-		return removePromise.then(() => this.end());
+		this.end();
 	};
 
 	const log = (description, event) => {
@@ -204,23 +203,23 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		if (!_.isPlainObject(state)) throw new Error('setState must be passed a plain object representing a state object');
 		log(`setting conversation state`, { prev: this.state, new: state });
 		this.state = _.assign({}, this.state, state);
-		return Promise.resolve(this.state);
+		return this.state;
 	}
 
 	const clearState = () => {
 		log(`clearing conversation state`);
 		this.state = {};
-		return Promise.resolve(this.state);
+		return this.state;
 	}
 
 	const mapToIntent = (intentName) => {
 		log(`mapping to intent`, { intentName });
-		return clearContext(true)
-			.then(() => {
-				let intent = getIntent(intentName);
-				let event = _.findLast(this.transcript, e => (e.author !== 'bot'));
-				evaluateIntentWithEvent(intent, event);
-			});
+		clearContext(true);
+		
+		let intent = getIntent(intentName);
+		let event = _.findLast(this.transcript, e => (e.author !== 'bot'));
+
+		evaluateIntentWithEvent(intent, event);
 	}
 
 
@@ -262,12 +261,9 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 					dialog: intent.dialog
 				});
 
-				let queue = getGeneratorFromFnArray(intent.solutions, [dispatch, e, this.state]);
-				queue
-					.then(e => {
-						this.cognitiveFunction = 'idle'
-					})
-					.catch(catchError);
+				// run each solution and pass the dispatch object, the event and the current state
+				intent.solutions.forEach(fn => fn(dispatch, e, this.state));
+
 			}
 		} catch(e) {
 			catchError(e);

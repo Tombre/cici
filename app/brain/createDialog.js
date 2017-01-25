@@ -100,21 +100,13 @@ function intent(dialogName, name, initialIntent) {
 			
 			let solution = (dispatch, response, state) => {
 
-				let prom = Promise.resolve()
-
-				// The following lines are to allow the chaining dispatch methods. It also wraps the promise "then" so that
-				// you can also run dispatch methods from that
+				// The following lines are to allow the chaining dispatch methods.
 				let mappedDispatch = _.mapValues(dispatch, fn => {
 					return function() { 
-						prom = prom.then(() => fn.apply(null, [...arguments]));
-						prom.then = ((...args) => _.assign(prom.then(...args), mappedDispatch));
-						_.assign(prom, mappedDispatch);
-						return prom;
+						fn(...arguments);
+						return mappedDispatch;
 					}
 				});
-
-				// _bindTo is a helper method which will allow us to bind dispatch methods to an object. Usefull for HOF creation
-				mappedDispatch._bindMethodsTo = (obj) => _.assign(obj, mappedDispatch);
 
 				return fulfilmentFn(mappedDispatch, response, state);
 			};
@@ -133,7 +125,7 @@ function intent(dialogName, name, initialIntent) {
 		// SETUP
 
 		// push the initial solution to set the correct context. This will only trigger for the initial intent.
-		this.fulfillWith((dispatch, response) => {
+		this.fulfillWith((dispatch, response, state) => {
 			if (!_.find(response.contexts, context => context.name === dialogName)) {
 				return dispatch.setContext(dialogName, true);
 			}
