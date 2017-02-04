@@ -261,8 +261,8 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 					dialog: intent.dialog
 				});
 
-				// run each solution and pass the dispatch object, the event and the current state
-				intent.solutions.forEach(fn => fn(dispatch, e, this.state));
+				// run each solution and pass the dispatch object, the event and the current state (shallow coppied)
+				intent.solutions.forEach(fn => fn(dispatch, e, Object.assign({}, this.state)));
 
 			}
 		} catch(e) {
