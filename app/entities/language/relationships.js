@@ -12,7 +12,7 @@ let relationships = createEntity('relationships')
 		'sibling': ['sister', 'bother', 'step-sister', 'step-brother'],
 		'relative': ['cousin', 'aunt', 'uncle', 'niece', 'nephew'],
 		'descendant': ['child', 'children', 'grandchild'],
-		'ancestor': ['grandparent', 'grandmother', 'parent']
+		'ancestor': ['grandparent', 'grandmother', 'parent'],
 		'acquaintance': ['workmate', 'colleague', 'employer', 'employee', 'friend', 'mentor', 'someone', 'dude', 'man']
 	});
 

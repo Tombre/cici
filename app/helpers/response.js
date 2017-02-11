@@ -17,9 +17,9 @@ function choose(messages) {
 * Choose For
 * Simple helper function to choose a value from a message map
 */
-function chooseFor(value, messageMap, default = '') {
+function chooseFor(value, messageMap, defaultMsg = '') {
 	if (messageMap[value]) return messageMap[value];
-	return default;
+	return defaultMsg;
 }
 
 /*
@@ -33,4 +33,22 @@ function higherOrderFulfill(fnAcceptingFulfillementCb) {
 	}
 }
 
-module.exports = { choose, chooseFor, higherOrderFulfill };
+
+/*
+* Fulfillment Chain
+* Chains HOF together so that
+* fulfillChain(askforthing, next => (convo, response) => {  next() })
+*/
+function fulfillChain() {
+	let fulfillmentArray = [...arguments];
+	return function(convo, response) {
+		const wrap = (wrapped) => () => wrapped(convo, response);
+		let fn = () => {};
+		for (var i = fulfillmentArray.length - 1; i >= 0; i--) {
+			fn = wrap(fulfillmentArray[i](fn))
+		}
+		return fn();
+	}
+}
+
+module.exports = { choose, chooseFor, higherOrderFulfill, fulfillChain };

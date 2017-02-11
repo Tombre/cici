@@ -8,7 +8,7 @@ const createEntity = require('brain/createEntity');
 
 let subject = createEntity('subject')
 	.entries({
-		'self': ['me', 'I', 'my', 'myself', 'mine', 'ours', 'our']
+		'self': ['me', 'I', 'my', 'myself', 'mine', 'ours', 'our'],
 		'bot': ['you', 'your', 'yours'],
 		'other': ['his', 'hers', 'its', 'their', 'theirs'],
 	});

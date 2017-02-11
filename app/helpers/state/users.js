@@ -6,12 +6,11 @@
 /*
 *	Sets the user to create in the state
 */
-function setUserToCreate(state = {}, data) {
-	state.userToCreate = data;
-	return state;
+function setUserToCreate(userToCreate) {
+	return { userToCreate };
 }
 
-module.exports.getUserToCreate = getUserToCreate
+module.exports.setUserToCreate = setUserToCreate
 
 
 
@@ -19,7 +18,7 @@ module.exports.getUserToCreate = getUserToCreate
 *	gets the user to create from the state
 */
 function getUserToCreate(state = {}) {
-	return Object.assign({}, state.userToCreate);
+	return (state.userToCreate || {})
 }
 
 module.exports.getUserToCreate = getUserToCreate
