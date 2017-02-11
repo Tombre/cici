@@ -188,7 +188,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			if (context === true) {
 				this.contexts = [];
 			} else {
-				this.contexts = _.remove(this.contexts, c => c.prime === false);
+				this.contexts = _.filter(this.contexts, c => c.prime === true);
 			}
 		}
 		return this.contexts;
@@ -238,7 +238,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	*/
 	const evaluateIntentWithEvent = (intent, e) => {
 
-		let dispatch = { say, log, setContext, clearContext, endDialog, setState, clearState, mapToIntent,
+		let dispatch = { say, log, setContext, clearContext, endDialog, setState, getState, clearState, mapToIntent,
 			action: _.partial(dispatchAction, { message: e })
 		};
 
@@ -288,6 +288,10 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		if (e.author === 'bot') return;
 		
 		log(`Message recieved`, e);
+
+		// clear the context so that it's not re-sent with the next query
+		clearContext();
+
 		let intent = getIntent(e.meaning.action);	
 		return evaluateIntentWithEvent(intent, e);
 
