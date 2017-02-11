@@ -43,21 +43,3 @@ function requireUserForFulfillment(cb, userMissingMessage) {
 }
 
 module.exports.requireUserForFulfillment = requireUserForFulfillment;
-
-
-/*
-*	Get user from adapter event
-*	Attempts to get the user model from an adapter event, and set it on the state of the conversation
-*/
-function getUserFromAdapterEvent(cb) {
-	return (dispatch, response, state) => {
-		return User.getUserFromAdapterEvent(response)
-			.then(user => {
-				if (user) {
-					return dispatch.setState({ user }).then(passWithNewState(cb, dispatch, response))
-				}
-			})
-	}
-}
-
-module.exports.getUserFromAdapterEvent = getUserFromAdapterEvent;

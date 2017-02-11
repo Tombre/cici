@@ -121,6 +121,9 @@ function intent(dialogName, name, initialIntent) {
 			return this;
 		}
 
+		// alias of "requires"
+		this.requiresContext = this.requires;
+
 
 		// SETUP
 

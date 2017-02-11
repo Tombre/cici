@@ -18,15 +18,4 @@ module.exports = createDialog('setUser', dialog => {
 			})
 	);
 
-	dialog.registerIntent(
-		dialog.intent('start', true)
-		.userSays(params => [
-			`change name`
-		])
-		.fulfillWith((dispatch, response) => {
-			return dispatch
-				.setContext('set-user-name') 
-		})
-	);
-
 });
