@@ -98,17 +98,18 @@ function intent(dialogName, name, initialIntent) {
 
 		this.fulfillWith = function(fulfilmentFn) {
 			
-			let solution = (dispatch, response, state) => {
+			let solution = (convo, response) => {
 
 				// The following lines are to allow the chaining dispatch methods.
-				let mappedDispatch = _.mapValues(dispatch, fn => {
+				let mappedConvo = _.mapValues(convo, fn => {
+					if (!_.isFunction(fn)) return fn;
 					return function() { 
 						fn(...arguments);
-						return mappedDispatch;
+						return mappedConvo;
 					}
 				});
 
-				return fulfilmentFn(mappedDispatch, response, state);
+				return fulfilmentFn(mappedConvo, response);
 			};
 
 			this.definition.solutions.push(solution);

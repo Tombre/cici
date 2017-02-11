@@ -235,6 +235,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 		let dispatch = { say, log, setContext, clearContext, endDialog, setState, clearState, mapToIntent,
 			action: _.partial(dispatchAction, { message: e }),
+			state: this.state
 		};
 
 		this.cognitiveFunction = 'evaluation';
