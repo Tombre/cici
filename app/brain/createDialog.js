@@ -103,8 +103,8 @@ function intent(dialogName, name, initialIntent) {
 			let solution = (convo, response) => {
 
 				// The following lines are to allow the chaining dispatch methods.
-				let mappedConvo = _.mapValues(convo, fn => {
-					if (!_.isFunction(fn)) return fn;
+				let mappedConvo = _.mapValues(convo, (fn, name) => {
+					if (!_.isFunction(fn) || name === 'getState') return fn;
 					return function() { 
 						fn(...arguments);
 						return mappedConvo;
