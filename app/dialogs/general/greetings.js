@@ -21,7 +21,7 @@ module.exports = createDialog('introduction', dialog => {
 				`Heya`,
 				`Hello`,
 			])
-			.fulfillWith()
+			.fulfillWith((convo, response) => convo.say('Hello!').endDialog())
 	)
 
 });
