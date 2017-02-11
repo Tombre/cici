@@ -255,10 +255,14 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		try {
 
 			if (!intent || intent.solutions.length === 0) {
+
 				log(`No matching intent, running default response`);
 				defaultResponse(dispatch, e.meaning, this.state);
 
 			} else {
+
+				// clear the context so that it's not re-sent with the next query
+				clearContext();
 
 				log(`Intent interpretation and evaluation`,  { 
 					name: intent.name,
@@ -288,9 +292,6 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		if (e.author === 'bot') return;
 		
 		log(`Message recieved`, e);
-
-		// clear the context so that it's not re-sent with the next query
-		clearContext();
 
 		let intent = getIntent(e.meaning.action);	
 		return evaluateIntentWithEvent(intent, e);
