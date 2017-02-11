@@ -131,9 +131,9 @@ function intent(dialogName, name, initialIntent) {
 		// SETUP
 
 		// push the initial solution to set the correct context. This will only trigger for the initial intent.
-		this.fulfillWith((dispatch, response, state) => {
+		this.fulfillWith((convo, response) => {
 			if (!_.find(response.contexts, context => context.name === dialogName)) {
-				return dispatch.setContext(dialogName, true);
+				return convo.setContext(dialogName, true);
 			}
 		});
 
