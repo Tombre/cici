@@ -97,7 +97,9 @@ function intent(dialogName, name, initialIntent) {
 		};
 
 		this.fulfillWith = function(fulfilmentFn) {
-			
+	
+			if (!_.isFunction(fulfilmentFn)) throw new Error('A fulfillWith call was not provided with a proper fulfilmentFn')
+
 			let solution = (convo, response) => {
 
 				// The following lines are to allow the chaining dispatch methods.
