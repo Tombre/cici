@@ -21,6 +21,7 @@ Schema
 const userShema = mongoose.Schema({
 	givenName: String,
 	lastName: String,
+	email: String,
 	profiles: [{
 		type: String,
 		username: String,
