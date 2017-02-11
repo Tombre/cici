@@ -101,16 +101,22 @@ function mapSystemIntent(intent) {
 
 function getNewIntents(api_intents, local_intents) {
 
-	let newAPIIntents = _.differenceBy(api_intents, local_intents, 'name');
-	let newLocalIntents = _.differenceBy(local_intents, api_intents, 'name');
-	if (newAPIIntents.length) {
-		log.warning(`There are ${newAPIIntents.length} new api.ai intents currently seperate to the intents outlined in dialogs. Suggest that you re-create them in manually, otherwise you may experience unexpected results. Differences have been written to the sync log`);
-	}
+	let newLocalIntents = _.filter(local_intents, (intent) => {
+		let matchingIntent = _.find(api_intents, { name: intent.name });
+		if (!matchingIntent) return true;
+		if (!_.isEqual(intent, matchingIntent)) {
+			intent.id = matchingIntent.id
+			return true;
+		}
+		return false;
+	});
+
 	if (!newLocalIntents.length) {
 		log.success('No intents to sync')
 	} else {
 		log.title(`${newLocalIntents.length} intents to sync`);
 	};
+
 	return newLocalIntents;
 
 }
@@ -122,11 +128,14 @@ function syncNewIntents(newIntents) {
 		
 	return Promise.all(
 		newIntents.map(
-			intent => api.POST('intents', null, intent)
-				.then(resp => {
-					bar.tick();
-					return resp;
-				})
+			intent => {
+				let method = ('id' in intent) ? 'PUT' : 'POST';
+				return api[method]('intents', intent, intent)
+					.then(resp => {
+						bar.tick();
+						return resp;
+					})
+			}
 		)
 	);
 }
@@ -150,16 +159,23 @@ function getSystemEntities() {
 }
 
 function getNewEntities(api_entities, local_entities) {
-	let newAPIEntities = _.differenceBy(api_entities, local_entities, 'name');
-	let newLocalEntities = _.differenceBy(local_entities, api_entities, 'name');
-	if (newAPIEntities.length) {
-		log.warning(`There are ${newAPIEntities.length} new api.ai entities currently seperate to the entities outlined in dialogs. Suggest that you re-create them in manually, otherwise you may experience unexpected results. Differences have been written to the sync log`);
-	}
+
+	let newLocalEntities = _.filter(local_entities, (entity) => {
+		let matchingEntity = _.find(api_entities, { name: entity.name });
+		if (!matchingEntity) return true;
+		if (!_.isEqual(entity, matchingEntity)) {
+			entity.id = matchingEntity.id
+			return true;
+		}
+		return false;
+	});
+
 	if (!newLocalEntities.length) {
 		log.success('No entities to sync')
 	} else {
 		log.title(`${newLocalEntities.length} entities to sync`);
 	};
+
 	return newLocalEntities;
 }
 
@@ -168,11 +184,14 @@ function syncNewEntities(newEntities) {
 	let bar = new ProgressBar('Syncing [:bar] :percent', { total: newEntities.length });
 	return Promise.all(
 		newEntities.map(
-			entity => api.POST('entities', null, entity)
-				.then(resp => {
-					bar.tick();
-					return resp;
-				})
+			entity => {
+				let method = ('id' in entity) ? 'PUT' : 'POST';
+				return api[method]('entities', entity, entity)
+					.then(resp => {
+						bar.tick();
+						return resp;
+					})
+			}
 		)
 	);
 }
