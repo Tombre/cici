@@ -93,6 +93,11 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	helper
 	----------------------------------------------------------*/
 
+	const log = (description, event) => {
+		console.log(description, event);
+		eventStream.dispatch(debugEvent({ description, event }, this.participant));
+	}
+
 	function getFilteredStream(filter) {
 		return filter(eventStream)
 			.map(e => e.payload)
@@ -195,15 +200,15 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		this.end();
 	};
 
-	const log = (description, event) => {
-		eventStream.dispatch(debugEvent({ description, event }, this.participant));
-	}
-
 	const setState = (state) => {
 		if (!_.isPlainObject(state)) throw new Error('setState must be passed a plain object representing a state object');
 		log(`setting conversation state`, { prev: this.state, new: state });
 		this.state = _.assign({}, this.state, state);
-		return this.state;
+		return getState();
+	}
+
+	const getState = () => {
+		return _.cloneDeep(this.state);
 	}
 
 	const clearState = () => {
@@ -234,8 +239,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	const evaluateIntentWithEvent = (intent, e) => {
 
 		let dispatch = { say, log, setContext, clearContext, endDialog, setState, clearState, mapToIntent,
-			action: _.partial(dispatchAction, { message: e }),
-			state: this.state
+			action: _.partial(dispatchAction, { message: e })
 		};
 
 		this.cognitiveFunction = 'evaluation';
@@ -263,7 +267,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 				});
 
 				// run each solution and pass the dispatch object, the event and the current state (shallow coppied)
-				intent.solutions.forEach(fn => fn(dispatch, e, Object.assign({}, this.state)));
+				intent.solutions.forEach(fn => fn(dispatch, e));
 
 			}
 		} catch(e) {
