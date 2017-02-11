@@ -191,8 +191,8 @@ function Dialog(name) {
 	};
 
 	resolve.intent = (name, initialIntent) => intent(definition.name, name, initialIntent);
-	resolve.intent.approval = (context) => intent(definition.name, (context + '-approval'), false).requires(context).userSays([ 'sure', 'ok', 'yep', 'yeah']);
-	resolve.intent.refusal = (context) => intent(definition.name, (context + '-refusal'), false).requires(context).userSays([ 'no', 'nope', 'nup', 'nah']);
+	resolve.intent.approval = (context) => intent(definition.name, (context + '-approval'), false).requires(context).userSays([ 'sure', 'ok', 'yep', 'yeah', 'yes']);
+	resolve.intent.refusal = (context) => intent(definition.name, (context + '-refusal'), false).requires(context).userSays([ 'no', 'nope', 'nup', 'nah', 'no']);
 
 	resolve.registerIntent = (intent) => { definition.intents[intent.definition.name] = intent };
 
