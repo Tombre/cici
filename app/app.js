@@ -1,3 +1,5 @@
+Error.stackTraceLimit = Infinity;
+
 const _ = require('lodash');
 
 const adapters = require('./adapters')
