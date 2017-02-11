@@ -18,6 +18,7 @@ function getSubjectResponse(convo) {
 	Contexts
 ----------------------------------------------------------*/
 
+const SHOULD_CREATE_USER = 'SHOULD_CREATE_USER';
 const IS_FOR_CURRENT_USER = 'IS_FOR_CURRENT_USER';
 const ASK_FULL_NAME = 'ASK_FULL_NAME';
 const ASK_FOR_EMAIL = 'ASK_FOR_EMAIL';
@@ -56,7 +57,7 @@ const askForMissingKeyInfo = next => (convo, response) => {
 *	when setting a new user, subject can be "self" or "other".
 */
 
-const setConversationSubject = next => (convo, response) => {
+const setSubjectFromResponse = next => (convo, response) => {
 	let { parameters: { subject, relationship } } = response.meaning;
 	if (relationship) subject = 'self';
 	if (!subject) subject = 'other';
@@ -75,9 +76,8 @@ const setUserName = next => (convo, response) => {
 	let userToCreate = getUserToCreate(convo.getState());
 	if (fullname) {
 		userToCreate.fullname = fullname;
-		convo
-			.say(`Ok`)
-			.setState(setUserToCreate(userToCreate));
+		if (response.triggerConversation === false) convo.say(`Ok`);
+		convo.setState(setUserToCreate(userToCreate));
 	} else {
 		convo.say(`sorry, I wasn't able to recognise a name there.`);
 	}
@@ -91,9 +91,11 @@ const setUserName = next => (convo, response) => {
 */
 
 const setEmail = next => (convo, response) => {
-	let { email } = response.meaning.parameters;
+	let { emailOrigional } = response.meaning.parameters;
+	let email = emailOrigional;
 	let userToCreate = getUserToCreate(convo.getState());
 	if (email && isEmail(email)) {
+
 		userToCreate.email = email;
 		convo
 			.say(`Thanks`)
@@ -111,10 +113,15 @@ const setEmail = next => (convo, response) => {
 
 const wrongInfo = type => fulfillChain(
 	next => (convo, response) => {
+
 		let userToCreate = getUserToCreate(convo.getState());
-		let setUserState = (user) => convo.setState(setUserToCreate(setUserState));
-		if (!type || type === 'name') {
-			userToCreate = {};
+		let setUserState = (user) => convo.setState(setUserToCreate(user));
+
+		if (!type) {
+			setUserState({});
+			convo.say('ok, lets start again then');
+		} else if (type === 'name') {
+			delete userToCreate.fullname;
 			setUserState(userToCreate)
 		} else if (type === 'email') {
 			delete userToCreate.email;
@@ -140,6 +147,7 @@ module.exports = createDialog('newUser', dialog => {
 	const SUBJECT = dialog.param('subject').entity('subject');
 	const RELATIONSHIP = dialog.param('relationship').entity('relationships');
 	const EMAIL = dialog.param('email').entity('sys.any');
+	const EMAIL_ORIGINAL = dialog.param('emailOrigional').setValue('\$email.original');
 
 	/*----------------------------------------------------------
 	Intents
@@ -147,24 +155,62 @@ module.exports = createDialog('newUser', dialog => {
 
 	/*
 	*	Introduction
-	*	This intent maps to a traditional introduction as though spoken in regular conversation when meeting someone. It will test
+	*	These intents maps to a traditional introduction as though spoken in regular conversation when meeting someone. It will test
 	*	for the subject, as well as relationship. The default subject is the user themselves. If a relationship is found, it will assume the subject is third person.
 	*/
 
 	dialog.registerIntent(
-		dialog.intent('introduce', true)
+		dialog.intent('introduce-3rd-party', true)
 			.params([FULLNAME, SUBJECT, RELATIONSHIP])
 			.userSays(params => [
 				`I'd like to introduce ${params.subject('myself')}`,
 				`I'd like to introduce you too ${params.relationship('someone')}`,
 				`I'd like to introduce you too ${params.subject('my')} ${params.relationship('friend')}`,
 				`I'd you to learn about ${params.fullname('Joe Shatner')}`,
-				`I'd you to learn about ${params.subject('my')} ${params.relationship('acquaintance')}`,
+				`I'd you to learn about ${params.subject('my')} ${params.relationship('acquaintance')}`
+			])
+			.fulfillWith(fulfillChain(setUserName, setSubjectFromResponse, askForMissingKeyInfo))
+	)
+
+	dialog.registerIntent(
+		dialog.intent('introduce-1st-person', true)
+			.params([FULLNAME])
+			.userSays(params => [
 				`Hi, I'm ${params.fullname('Joe Shatner')}`,
 				`Hello, I'm ${params.fullname('Xavier')}`
 			])
-			.fulfillWith(fulfillChain(setUserName, setConversationSubject, askForMissingKeyInfo))
+			.fulfillWith(fulfillChain(
+				setUserName,
+				next => (convo, response) => {
+					let { fullname } = response.meaning.parameters;
+					convo
+						.setContext(SHOULD_CREATE_USER)
+						.setState(setSubject('self'))
+						.say(`Hi ${fullname}. You don't seem to be in any of my records, would you like to create a new user for yourself?`);
+					next();
+				}
+			))
 	)
+
+	dialog.registerIntent(
+		dialog.intent.approval(SHOULD_CREATE_USER)
+			.fulfillWith(fulfillChain(
+				next => (convo, response) => {
+					convo.say("Ok, I'll need you collect some information from you first");
+					next();
+				},
+				askForMissingKeyInfo
+			))
+	)
+
+	dialog.registerIntent(
+		dialog.intent.refusal(SHOULD_CREATE_USER)
+			.fulfillWith((convo, response) => {
+				convo
+					.say("Ok, no worries")
+					.endDialog();
+			})
+	)	
 
 	/*
 	*	Command
@@ -175,6 +221,8 @@ module.exports = createDialog('newUser', dialog => {
 	dialog.registerIntent(
 		dialog.intent('command', true)
 			.userSays(params => [
+				`Create a new account please`,
+				`I want an account please`,
 				`learn a new user`,	
 				`add new user`,
 				`add user`,
@@ -236,7 +284,7 @@ module.exports = createDialog('newUser', dialog => {
 	dialog.registerIntent(
 		dialog.intent('set-email')
 			.requires(ASK_FOR_EMAIL)
-			.params([EMAIL])
+			.params([EMAIL, EMAIL_ORIGINAL])
 			.userSays(params => [params.email()], true)
 			.fulfillWith(fulfillChain(
 				setEmail,
@@ -263,6 +311,7 @@ module.exports = createDialog('newUser', dialog => {
 		dialog.intent('email-wrong')
 			.requires(ASK_TO_CONFIRM_USER)
 			.userSays(params => [
+				'nah, email is wrong',
 				'The email is wrong',
 				'No, the email is wrong',
 				'Email is wrong',
@@ -275,9 +324,10 @@ module.exports = createDialog('newUser', dialog => {
 		dialog.intent('name-wrong')
 			.requires(ASK_TO_CONFIRM_USER)
 			.userSays(params => [
-				'The email is name',
-				'No, the email is name',
-				'Email is name',
+				'nah, name is wrong',
+				'The name is wrong',
+				'No, the name is name',
+				'Name is name',
 				'Wrong name'
 			])
 			.fulfillWith(wrongInfo('name'))
