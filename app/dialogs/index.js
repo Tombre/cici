@@ -1,8 +1,9 @@
 
 module.exports = [
+	// require('./createbouquet'),
 	require('./cancelDialog'),
-	require('./createbouquet'),
 	require('./diagnostics/debug'),
-	// require('./users/learnNewUser'),
+	require('./general/greetings'),
+	require('./users/newUser')
 	// require('./users/setUser')
 ];
