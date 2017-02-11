@@ -125,7 +125,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		.toProperty(() => sourceEvent)
 		.map(e => _.assign(e, { conversationID : this.id }))
 		// manage cognitive buffer of events. This is so the system only has to interperate one message at a time
-		.takeWhile(e => this.cognitiveFunction === 'idle')
+		.filter(e => this.cognitiveFunction === 'idle')
 		.flatMapConcat(e => {
 			this.cognitiveFunction = 'recognition'
 			// get meaning from event and add it to the event object
@@ -257,7 +257,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			if (!intent || intent.solutions.length === 0) {
 				log(`No matching intent, running default response`);
 				defaultResponse(dispatch, e.meaning, this.state);
-				this.cognitiveFunction = 'idle'
+
 			} else {
 
 				log(`Intent interpretation and evaluation`,  { 
@@ -274,12 +274,14 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			catchError(e);
 		}
 
+		this.cognitiveFunction = 'idle'
+
 	}
 
 	// handles the evaluation of messages that are passed through the conversation object. This subscription evaluates the solutions of a matched
 	// dialog and runs associated functions.
 	const messageSubscription = () => this.messageStream.observe((e) => {
-		
+
 		this.transcript.push(e);
 		this.latestActivity = Date.now();
 		
