@@ -1,9 +1,10 @@
 const createDialog = require('brain/createDialog');
 const isEmail = require('validator/lib/isEmail');
-const { getUserFromAdapterEvent, getUserFromNameInResponse } = require('memory/user');
-const { setSubject, getSubject } = require('helpers/state/general');
-const { setUserToCreate, getUserToCreate } = require('helpers/state/users');
-const { chooseFor, fulfillChain } = require('helpers/response');
+const { getUserFromAdapterEvent, getUsersFromNameInResponse } = require('memory/user');
+const { setSubject, getSubject } = require('state/general');
+const { setUserToCreate, getUserToCreate } = require('state/users');
+const { chooseFor } = require('helpers/response');
+const { fulfillChain } = require('helpers/fulfillment');
 
 /*----------------------------------------------------------
 Helper
@@ -27,6 +28,27 @@ const ASK_TO_CONFIRM_USER = 'ASK_TO_CONFIRM_USER';
 /*----------------------------------------------------------
 Fulfillment
 ----------------------------------------------------------*/
+
+/*
+*	Block if already user
+*	Will test to see if the user already exists from the event, or the name in the state
+*/
+
+const blockIfAlreadyUser = next => (convo, response) => {
+	getUserFromAdapterEvent(response)
+		.then(user => {
+			if (user) return user;
+			return getUsersFromNameInResponse(response)
+				// .then(users => )
+		})
+		.then(user => {
+			if (user) {
+				return convo.say('Hi there! You already have an account')
+			}
+			next();
+		})
+}
+
 
 /*
 *	respond for missing info

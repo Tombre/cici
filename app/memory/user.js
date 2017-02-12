@@ -44,17 +44,17 @@ Functions
 * Get user from name in response
 * Attempts to find the user that is mentioned in a response by the users name perameters
 */
-function getUserFromNameInResponse(response) {
+function getUsersFromNameInResponse(response) {
 	let { givenName, lastName, fullname } = response.meaning.parameters;
 	if (fullname) {
 		givenName = fullname.split(' ')[0];
 		lastName = fullname.split(' ')[1];
+		return User.find({ givenName, lastName })
+			.catch(e => console.log(e))
 	}
-	return User.findOne({ givenName, lastName })
-		.catch(e => console.log(e))
 }
 
-module.exports.getUserFromNameInResponse = getUserFromNameInResponse;
+module.exports.getUsersFromNameInResponse = getUsersFromNameInResponse;
 
 
 /*
