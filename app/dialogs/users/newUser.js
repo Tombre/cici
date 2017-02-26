@@ -1,76 +1,69 @@
 const createDialog = require('brain/createDialog');
 const isEmail = require('validator/lib/isEmail');
-const { getUserFromAdapterEvent, getUsersFromNameInResponse } = require('memory/user');
+const { getUserFromEmail, getUserFromAdapterEvent } = require('memory/user');
 const { setSubject, getSubject } = require('state/general');
 const { setUserToCreate, getUserToCreate } = require('state/users');
+const { setToFulfill, getToFulfill } = require('state/fulfillment');
 const { chooseFor } = require('helpers/response');
 const { fulfillChain } = require('helpers/fulfillment');
+const { getSubjectResponse } = require('./userFactories');
 
 /*----------------------------------------------------------
 Helper
 ----------------------------------------------------------*/
 
-function getSubjectResponse(convo) {
-	let subject = getSubject(convo.getState());
-	return chooseFor(subject, { "self": "your", "other": "the user's" }, 'your');
+// pass a user document object or an event to try and find it
+function tryGetUser(userDocument, event) {
+	return getUserFromAdapterEvent(event)
+		.then(user => {
+			if (!user && userDocument.email) return getUserFromEmail(userDocument.email);
+			return user;
+		})
 }
 
 /*----------------------------------------------------------
 	Contexts
 ----------------------------------------------------------*/
 
-const SHOULD_CREATE_USER = 'SHOULD_CREATE_USER';
+const SHOULD_GOTO_EDIT = 'SHOULD_GOTO_EDIT';
 const IS_FOR_CURRENT_USER = 'IS_FOR_CURRENT_USER';
 const ASK_FULL_NAME = 'ASK_FULL_NAME';
 const ASK_FOR_EMAIL = 'ASK_FOR_EMAIL';
 const ASK_TO_CONFIRM_USER = 'ASK_TO_CONFIRM_USER';
+const SHOULD_CREATE_USER = 'SHOULD_CREATE_USER';
 
 /*----------------------------------------------------------
 Fulfillment
 ----------------------------------------------------------*/
 
-/*
-*	Block if already user
-*	Will test to see if the user already exists from the event, or the name in the state
-*/
-
-const blockIfAlreadyUser = next => (convo, response) => {
-	getUserFromAdapterEvent(response)
-		.then(user => {
-			if (user) return user;
-			return getUsersFromNameInResponse(response)
-				// .then(users => )
-		})
-		.then(user => {
-			if (user) {
-				return convo.say('Hi there! You already have an account')
-			}
-			next();
-		})
-}
-
 
 /*
 *	respond for missing info
-*	Will ask for missing info
+*	Will keep asking for missing info untill the user provides it.
 */
 
 const askForMissingKeyInfo = next => (convo, response) => {
-
 	let { fullname, email } = getUserToCreate(convo.getState());
-	
 	if (!fullname) {
 		convo.setContext(ASK_FULL_NAME).say(`What is ${getSubjectResponse(convo)} full name?`)
 	} else if (!email) {
 		convo.setContext(ASK_FOR_EMAIL).say(`What is ${getSubjectResponse(convo)} email?`);
 	} else {
-		convo
-			.setContext(ASK_TO_CONFIRM_USER)
-			.say(`That's all the info I need for now. Does this look right to you? \n Name: ${fullname} \n Email: ${email}`)
+		return tryGetUser(getUserToCreate(convo.getState()), response)
+			.then(user => {
+				if (user) {
+					convo
+						.say(`I know a user with those details already. Would you like edit the settings of this person?`)
+						.setContext(SHOULD_GOTO_EDIT)
+				} else {
+					convo
+						.setContext(ASK_TO_CONFIRM_USER)
+						.say(`That's all the info I need for now. Does this look right to you? \n Name: ${fullname} \n Email: ${email}`)
+					next();
+				}
+			});
 	}
-	
 	next();
-
 }
 
 
@@ -191,7 +184,11 @@ module.exports = createDialog('newUser', dialog => {
 				`I'd you to learn about ${params.fullname('Joe Shatner')}`,
 				`I'd you to learn about ${params.subject('my')} ${params.relationship('acquaintance')}`
 			])
-			.fulfillWith(fulfillChain(setUserName, setSubjectFromResponse, askForMissingKeyInfo))
+			.fulfillWith(fulfillChain(
+				setUserName, 
+				setSubjectFromResponse, 
+				askForMissingKeyInfo
+			))
 	)
 
 	dialog.registerIntent(
@@ -212,6 +209,22 @@ module.exports = createDialog('newUser', dialog => {
 					next();
 				}
 			))
+	)
+
+	/*
+	*	Should Crearte
+	*	These intents will map to creating a new user or not. There is a dummy intent 'should-create-new-user-mapper' which allows other intents to map
+	*	to it. This is good for creating a new user.
+	*/
+
+	dialog.registerIntent(
+		dialog.intent('should-create-new-user-self')
+			.fulfillWith((convo, response) => {
+				convo
+					.setContext(SHOULD_CREATE_USER)
+					.setState(setSubject('self'))
+					.say('Would you like to create a new user for yourself?')
+			})
 	)
 
 	dialog.registerIntent(
@@ -329,35 +342,57 @@ module.exports = createDialog('newUser', dialog => {
 			})
 	)
 
+	const editEmailOrName = function(type) {
+		return [
+			`nah, ${type} is wrong`,
+			`The ${type} is wrong`,
+			`No, the ${type} is wrong`,
+			`${type} is wrong`,
+			`Wrong ${type}`,
+			`Change the ${type}`,
+			`Edit the ${type}`
+		]
+	}
+
 	dialog.registerIntent(
 		dialog.intent('email-wrong')
 			.requires(ASK_TO_CONFIRM_USER)
-			.userSays(params => [
-				'nah, email is wrong',
-				'The email is wrong',
-				'No, the email is wrong',
-				'Email is wrong',
-				'Wrong email'
-			])
+			.userSays(params => editEmailOrName('email'))
 			.fulfillWith(wrongInfo('email'))
 	)
 
 	dialog.registerIntent(
 		dialog.intent('name-wrong')
 			.requires(ASK_TO_CONFIRM_USER)
-			.userSays(params => [
-				'nah, name is wrong',
-				'The name is wrong',
-				'No, the name is name',
-				'Name is name',
-				'Wrong name'
-			])
+			.userSays(params => editEmailOrName('name'))
 			.fulfillWith(wrongInfo('name'))
 	)
 
 	dialog.registerIntent(
 		dialog.intent.refusal(ASK_TO_CONFIRM_USER)
 			.fulfillWith(wrongInfo())
+	)
+
+	/*
+	*	Should set user
+	*	If the user should be set or a new one should be created
+	*/
+
+	dialog.registerIntent(
+		dialog.intent.approval(SHOULD_GOTO_EDIT)
+			.fulfillWith((convo, response) => {
+				convo
+					.mapToIntent('setUser/edit');
+			})
+	)
+
+	dialog.registerIntent(
+		dialog.intent.refusal(SHOULD_GOTO_EDIT)
+			.fulfillWith((convo, response) => {
+				convo
+					.say("Ok, I can't create a new user for then sorry")
+					.endDialog();
+			})
 	)
 
 });

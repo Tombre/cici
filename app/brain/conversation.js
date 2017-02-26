@@ -196,6 +196,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 	const endDialog = () => {
 		log('Ending dialog');
+		clearContext(true);
 		clearState();
 		this.end();
 	};

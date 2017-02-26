@@ -4,15 +4,9 @@ const mongoose = require('mongoose');
 Setup
 ----------------------------------------------------------*/
 
-const profileTypes = {
-	"facebook": {},
-	"twitter": {},
-	"slack": {
-		"event_user_key": "user"
-	}
-};
+const roleTypes = ['master', 'admin', 'user'];
 
-module.exports.profileTypes = profileTypes;
+module.exports.roleTypes = roleTypes;
 
 /*----------------------------------------------------------
 Schema
@@ -21,10 +15,10 @@ Schema
 const userShema = mongoose.Schema({
 	givenName: String,
 	lastName: String,
+	role: String,
 	email: String,
-	profiles: [{
-		type: String,
-		username: String,
+	adapterProfiles: [{
+		adapter: String,
 		id: String
 	}]
 });
@@ -41,43 +35,60 @@ Functions
 ----------------------------------------------------------*/
 
 /*
-* Get user from name in response
-* Attempts to find the user that is mentioned in a response by the users name perameters
+* Get user from email in response
+* Attempts to find the user by their email
 */
-function getUsersFromNameInResponse(response) {
-	let { givenName, lastName, fullname } = response.meaning.parameters;
-	if (fullname) {
-		givenName = fullname.split(' ')[0];
-		lastName = fullname.split(' ')[1];
-		return User.find({ givenName, lastName })
-			.catch(e => console.log(e))
-	}
+
+function getUserFromEmail(email) {
+	return User.findOne({ email })
+		.catch(e => console.log(e))
 }
 
-module.exports.getUsersFromNameInResponse = getUsersFromNameInResponse;
+
+/*
+* Get user from their name
+* Attempts to find every user that matches the full name
+*/
+
+function getUsersFromName(fullname) {
+	givenName = fullname.split(' ')[0];
+	lastName = fullname.split(' ')[1];
+	return User.find({ givenName, lastName })
+		.catch(e => console.log(e))
+}
+
+module.exports.getUsersFromName = getUsersFromName;
 
 
 /*
 * Get user from adapter event
 * Attempts to find the user that is mentioned in a response by the event passed by the adapter
 */
+
 function getUserFromAdapterEvent(response) {
-	
-	let { adapterID, adapterEvent } = response;
-	
-	if (profileTypes[adapterID] && profileTypes[adapterID].event_user_key) {
-		let userProfileID = [profileTypes[adapterID].event_user_key]
-	}
-	
+	let { adapterID, author } = response;
 	return User.findOne({
-			'profiles' : { 
-				$elemMatch: { type: adapterID, id: userProfileID } 
+			'adapterProfiles' : { 
+				$elemMatch: { adapter: adapterID, id: author } 
 			}
 		})
 		.catch(e => console.log(e))
 }
 
 module.exports.getUserFromAdapterEvent = getUserFromAdapterEvent;
+
+
+/*
+* Get user from email
+* Attempts to find the user from an email
+*/
+
+function getUserFromEmail(email) {
+	return User.find({ email })
+		.catch(e => console.log(e));
+}
+
+module.exports.getUserFromEmail = getUserFromEmail;
 
 
 /*
