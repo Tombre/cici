@@ -42,6 +42,7 @@ module.exports = createDialog('editUser-role', dialog => {
 			.params([ROLE])
 			.userSays(params => [params.role()], true)
 			.fulfillWith((convo, response) => {
+
 				let { role } = response.meaning.parameters;
 				let user = convo.getState(getUser());
 				if (role) {
@@ -50,11 +51,10 @@ module.exports = createDialog('editUser-role', dialog => {
 							.action('setUser', { user, toSet: { role } })
 							.say('ok, changing your role now')
 							.mapToIntent('editUser/any-other-settings-to-change')
-				} else {
-					convo
-						setContext(SET_ROLE_TOO)
-						.say(`sorry, I wasn't able to recognise a role there. What would you like ${getSubjectResponse(convo)} role changed too?`);
 				}
+				convo
+					.setContext(SET_ROLE_TOO)
+					.say(`sorry, I wasn't able to recognise a role there. What would you like ${getSubjectResponse(convo)} role changed too?`);
 			})
 	)
 

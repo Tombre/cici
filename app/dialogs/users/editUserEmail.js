@@ -48,7 +48,7 @@ module.exports = createDialog('editUser-email', dialog => {
 
 				if (!email || !isEmail(email)) {
 					return convo
-						.setContext(SET_ROLE_TOO)
+						.setContext(SET_EMAIL_TOO)
 						.say(`sorry, I wasn't able to recognise an email there. Can you try again?`);
 				}
 

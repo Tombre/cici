@@ -1,0 +1,35 @@
+module.exports = {
+    "env": {
+        "es6": true,
+        "node": true
+    },
+    "extends": "eslint:recommended",
+    "rules": {
+        "linebreak-style": ["error", "unix"],
+        "camelcase": 0,
+        "comma-dangle": 0,
+        "no-alert": 0,
+        "no-else-return": 1,
+        "brace-style": 0,
+        "comma-style": [1, "last"],
+        "no-lonely-if": 1,
+        "no-multi-spaces": [1, { "exceptions": { "VariableDeclarator": true } }],
+        "no-mixed-spaces-and-tabs": 0,
+        "no-extra-semi": 0,
+        "no-console": 0,
+        "no-unreachable": 0,
+        "no-control-regex": 0,
+        "no-mixed-requires": 2,
+        "no-underscore-dangle": 0,
+        "no-var": 0,
+        "no-duplicate-case": 0,
+        "no-func-assign": 0,
+        "no-unused-vars": 0,
+        "quotes": 0,
+        "no-undef": 2,
+        "space-before-function-paren": [1, "never"],
+        "space-after-keywords": 0,
+        "space-before-blocks": 0,
+        "new-cap": 0,
+    }
+};

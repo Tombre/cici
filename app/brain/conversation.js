@@ -185,11 +185,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			this.contexts = _.without(this.contexts, ...contexts);	
 		} else {
 			// if the context is true, we want to clear all contexts, otherwise clear all except the prime context
-			if (context === true) {
-				this.contexts = [];
-			} else {
-				this.contexts = _.filter(this.contexts, c => c.prime === true);
-			}
+			this.contexts = context === true ? [] : _.filter(this.contexts, c => c.prime === true);
 		}
 		return this.contexts;
 	};
@@ -247,7 +243,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 		let catchError = (e => {
 			say(`Sorry, an error occured and I am unable to complete your request`);
-			log(`Failed to evaluate solutions`,  { intent, message: e });
+			log(`Failed to evaluate solutions`, { intent, message: e });
 			console.log(e);
 		});
 
@@ -265,7 +261,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 				// clear the context so that it's not re-sent with the next query
 				clearContext();
 
-				log(`Intent interpretation and evaluation`,  { 
+				log(`Intent interpretation and evaluation`, { 
 					name: intent.name,
 					initialIntent: intent.initialIntent,
 					dialog: intent.dialog

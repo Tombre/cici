@@ -44,7 +44,7 @@ function intent(dialogName, name, initialIntent) {
 						}
 
 						let id = _.uniqueId();
-						usedParamInstances[id] = {  param, text };
+						usedParamInstances[id] = { param, text };
 						
 						return '<||>' + delim + id + '<||>';
 

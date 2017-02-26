@@ -1,5 +1,5 @@
 const Kefir = require('kefir');
-const { recievedMessage,  sendMessage } = require('brain/events/message');
+const { recievedMessage, sendMessage } = require('brain/events/message');
 const { filterRead, filterSend } = require('helpers/streams');
 
 /*----------------------------------------------------------
@@ -34,9 +34,9 @@ module.exports = function(id, adapter) {
 		}
 
 		// pass fn to push messages, and another to subscribe to the speaking event
-		adapter(pushMessageEvent,  subscribeToSpeakEvent);
+		adapter(pushMessageEvent, subscribeToSpeakEvent);
 
-		return {  id, pushSpeakEvent };
+		return { id, pushSpeakEvent };
 
 	};
 }

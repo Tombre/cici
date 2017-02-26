@@ -46,14 +46,13 @@ module.exports = createDialog('editUser-name', dialog => {
 				if (fullname) {
 					return 
 						convo
-							.action('setUser', {  user, toSet: { fullname }  })
+							.action('setUser', { user, toSet: { fullname } })
 							.say('ok, changing your name now')
 							.mapToIntent('editUser/any-other-settings-to-change')
-				} else {
-					convo
-						setContext(SET_NAME_TOO)
-						.say(`sorry, I wasn't able to recognise a name there. What would you like ${getSubjectResponse(convo)} name changed too?`);
 				}
+				convo
+					.setContext(SET_NAME_TOO)
+					.say(`sorry, I wasn't able to recognise a name there. What would you like ${getSubjectResponse(convo)} name changed too?`);
 			})
 	)
 

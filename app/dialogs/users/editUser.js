@@ -187,7 +187,7 @@ module.exports = createDialog('editUser', dialog => {
 				
 				let { emailOrigional, number } = response.meaning.parameters;
 				let email = emailOrigional;
-				let { userList } = getState();
+				let { userList } = convo.getState();
 				let user;
 
 				if (number && userList[number]) {

@@ -35,24 +35,13 @@ Functions
 ----------------------------------------------------------*/
 
 /*
-* Get user from email in response
-* Attempts to find the user by their email
-*/
-
-function getUserFromEmail(email) {
-	return User.findOne({ email })
-		.catch(e => console.log(e))
-}
-
-
-/*
 * Get user from their name
 * Attempts to find every user that matches the full name
 */
 
 function getUsersFromName(fullname) {
-	givenName = fullname.split(' ')[0];
-	lastName = fullname.split(' ')[1];
+	let givenName = fullname.split(' ')[0];
+	let lastName = fullname.split(' ')[1];
 	return User.find({ givenName, lastName })
 		.catch(e => console.log(e))
 }
@@ -96,8 +85,8 @@ module.exports.getUserFromEmail = getUserFromEmail;
 * Splits a fullname into given names
 */
 function splitName(fullName) {
-	let givenName = fullname.split(' ')[0];
-	let lastName = fullname.split(' ')[1];
+	let givenName = fullName.split(' ')[0];
+	let lastName = fullName.split(' ')[1];
 	return [givenName, lastName]
 }
 
