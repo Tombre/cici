@@ -9,10 +9,11 @@ Intent
 
 module.exports = createAction('newUser', function(dispatch, params) {
 
-	let user = params.user;
-	console.log('creating', params.user);
+	let { user } = params;
 
-	// var kitty = new User({ 
+	console.log(user);
+
+	// var newUser = new User({ 
 	// 	givenName: user.givenName,
 	// 	lastName: user.lastName,
 	// 	profiles: user.profiles.map(profile => {
@@ -20,5 +21,5 @@ module.exports = createAction('newUser', function(dispatch, params) {
 	// 		return { type, link };
 	// 	})
 	// });
-	
+
 });
