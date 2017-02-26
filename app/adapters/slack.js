@@ -32,8 +32,9 @@ module.exports = createAdapter('slack', function(readMessage, onSayEvent) {
 		readMessage({
 			text: message.text,
 			adapterEvent: message,
+			author: message.user,
 			source: {
-				user: message.user,
+				author: message.user,
 				channel: message.channel,
 				team: message.team
 			}
