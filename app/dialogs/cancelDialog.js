@@ -11,7 +11,8 @@ module.exports = createDialog('cancelDialog', dialog => {
 				`I've changed my mind`,
 				`cancel dialog`,
 				`end dialog`,
-				`I don't care anymore`
+				`I don't care anymore`,
+				`abort`
 			])
 			.fulfillWith((dialog, response) => {
 				return dialog
