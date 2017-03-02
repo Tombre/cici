@@ -146,6 +146,11 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	----------------------------------------------------------*/
 
 	const say = (text) => {
+
+		if (this.status === 'ended') {
+			throw new Error(`You cannot say anything to a conversation after it has already ended`);
+		}
+
 		eventStream.dispatch(sendMessage({
 			text: text,
 			adapterID: this.adapter,
@@ -153,10 +158,10 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		}));
 	};
 
-	const dispatchAction = (defaults, name, params) => {
+	const dispatchAction = (name, params) => {
 		log(`Dispatching action`, { name, params });
-		let computed = _.assign({}, defaults, params);
-		eventStream.dispatch(fulfillAction(name, computed));
+		let def = { conversation: this, params };
+		eventStream.dispatch(fulfillAction(name, def));
 	};
 
 	// sets an array of contexts to the conversation. Does not add duplicates
@@ -235,9 +240,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	*/
 	const evaluateIntentWithEvent = (intent, e) => {
 
-		let dispatch = { say, log, setContext, clearContext, endDialog, setState, getState, clearState, mapToIntent,
-			action: _.partial(dispatchAction, { message: e })
-		};
+		let dispatch = { say, log, setContext, clearContext, endDialog, setState, getState, clearState, mapToIntent, action: dispatchAction };
 
 		this.cognitiveFunction = 'evaluation';
 
