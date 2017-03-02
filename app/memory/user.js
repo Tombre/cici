@@ -1,4 +1,25 @@
 const mongoose = require('mongoose');
+const isEmail = require('validator/lib/isEmail');
+const _ = require('lodash');
+const bcrypt = require('bcrypt');
+
+/*----------------------------------------------------------
+Config
+----------------------------------------------------------*/
+
+const SALT_WORK_FACTOR = 10;
+
+/*----------------------------------------------------------
+Helper
+----------------------------------------------------------*/
+
+function chainMiddleWare() {
+	let fns = [...arguments];
+	return function() {
+		fns.forEach(fn => fn.apply(this, [...arguments]));
+	}
+}
+
 
 /*----------------------------------------------------------
 Setup
@@ -13,15 +34,87 @@ Schema
 ----------------------------------------------------------*/
 
 const userShema = mongoose.Schema({
-	givenName: String,
+	givenName: {
+		type: String,
+		required: true
+	},
 	lastName: String,
-	role: String,
-	email: String,
+	role: {
+		type: String,
+		required: true,
+		enum: roleTypes
+	},
+	email: {
+		type: String,
+		required: true,
+		unique: true, 
+		validate: {
+			validator: v => isEmail(v),
+			message: '{VALUE} is not a valid email address'
+		}
+	},
+	passPhrase: {
+		type: String
+	},
 	adapterProfiles: [{
 		adapter: String,
 		id: String
 	}]
 });
+
+/*----------------------------------------------------------
+MiddleWare
+----------------------------------------------------------*/
+
+/*
+*	Compute Fullname
+*	Fill out the fullname into the givenand last name, if one is provided
+*/
+
+function computeFullNameForDoc(next) {
+
+	if (!this.fullname) return next();
+
+	let [givenName, lastName] = splitName(this.fullname);
+	this.givenName = givenName;
+	if (lastName) {
+		this.lastName = lastName;	
+	} else {
+		delete this.lastName;
+	}
+
+	delete this.fullname;
+	next();
+
+}
+
+
+/*
+*	Encrypt the passphrase
+*	Encrypts a passphrase to the db. Uses a salt set in the config above
+*/
+
+function encryptPassphrase(next) {
+	
+	let user = this;
+	if (!user.passPhrase || !user.isModified('passPhrase')) return next();
+
+	bcrypt.genSalt(SALT_WORK_FACTOR)
+		.then(salt => bcrypt.hash(this.passPhrase, salt))
+		.then(hash => {
+			user.passPhrase = hash;
+			next();
+		})
+		.catch(err => next(err));
+}
+
+/*----------------------------------------------------------*/
+
+
+userShema.pre('save', chainMiddleWare(
+	computeFullNameForDoc,
+	encryptPassphrase
+));
 
 /*----------------------------------------------------------
 Model
@@ -73,7 +166,7 @@ module.exports.getUserFromAdapterEvent = getUserFromAdapterEvent;
 */
 
 function getUserFromEmail(email) {
-	return User.find({ email })
+	return User.findOne({ email })
 		.catch(e => console.log(e));
 }
 
