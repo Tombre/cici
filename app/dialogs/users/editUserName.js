@@ -28,10 +28,11 @@ module.exports = createDialog('editUser-name', dialog => {
 	dialog.registerIntent(
 		dialog.intent('edit')
 			.fulfillWith((convo, response) => {
-				let user = convo.getState(getUser());
+				let user = getUser(convo.getState());
+				console.log('THE USER', user);
 				convo
 					.setContext(SET_NAME_TOO)
-					.say(`${getSubjectResponse(convo)} name is currently: "${user.lastName ? user.givenName + ` ${user.lastName}` : user.givenName }", what would you like it to be changed to?`)
+					.say(`${getSubjectResponse(convo)} name is currently: "${user.lastName ? (user.givenName + ` ${user.lastName}`) : user.givenName }", what would you like it to be changed to?`)
 			})
 	)
 
@@ -42,13 +43,12 @@ module.exports = createDialog('editUser-name', dialog => {
 			.userSays(params => [params.fullname()], true)
 			.fulfillWith((convo, response) => {
 				let { fullname } = response.meaning.parameters;
-				let user = convo.getState(getUser());
+				let user = getUser(convo.getState());
 				if (fullname) {
-					return 
-						convo
-							.action('setUser', { user, toSet: { fullname } })
-							.say('ok, changing your name now')
-							.mapToIntent('editUser/any-other-settings-to-change')
+					const next = () => convo.mapToIntent('editUser/any-other-settings-to-change');
+					return convo
+						.say('ok, changing your name now')
+						.action('setUser', { user, toSet: { fullname }, next })
 				}
 				convo
 					.setContext(SET_NAME_TOO)

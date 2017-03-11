@@ -23,7 +23,8 @@ function getEditCommands(params, param, example) {
 		`${params[param](example)}`,
 		`edit ${params[param](example)}`,
 		`set ${params[param](example)}`,
-		`change ${params[param](example)}`
+		`change ${params[param](example)}`,
+		`the ${params[param](example)} please`
 	]
 }
 
@@ -59,11 +60,9 @@ const ASK_FOR_SETTINGS_TO_CHANGE = 'ASK_FOR_SETTINGS_TO_CHANGE';
 const chooseToEditUserFromEvent = next => (convo, response) => {
 	getUserFromAdapterEvent(response)
 		.then(function(user) {
-			if (user){
-				return userSettingsToChangeFullfillment(convo, user);
-			}
+			if (user) return userSettingsToChangeFullfillment(convo, user);
 			return convo
-				.say(`Looks like you aren't a registered user yet.`)
+				.say(`Looks like you aren't a registered user yet. You need to be registered to edit a user`)
 				.mapToIntent('newUser/should-create-new-user-self');
 		})
 }
@@ -112,9 +111,10 @@ module.exports = createDialog('editUser', dialog => {
 					let { subject } = response.meaning.parameters;
 					convo.setState(setSubject(subject));
 					if (subject !== 'self') {
+						// if it's not for yourself, select a user first (don't go to the next fulfillment in the chain)
 						return convo
 							.setContext(NO_USER_SELECTED)
-							.say('What is the name of the user would you like to edit?')
+							.say('What is the name of the user would you like to edit (or is it yourself)?')
 					}
 					next();
 				},

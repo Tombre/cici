@@ -1,25 +1,41 @@
 const createAction = require('brain/createAction');
 const { choose } = require('helpers/response');
-const { sendMessage } = require('brain/events/message');
 const { User } = require('memory/user');
+const _ = require('lodash');
+
+/*----------------------------------------------------------
+Helper
+----------------------------------------------------------*/
+
+function getAdapterID(convo) {
+	return {
+		adapter: convo.adapter,
+		userID: convo.participant
+	}
+}
 
 /*----------------------------------------------------------
 Intent
 ----------------------------------------------------------*/
 
-module.exports = createAction('newUser', function(dispatch, params) {
+module.exports = createAction('newUser', function(dispatch, def) {
 
-	let { user } = params;
+	let { params: { user }, conversation } = def;
+	
+	// conosle.log('ADAPTER PROFILE')
 
-	console.log(user);
+	let defaults = {
+		role: 'user',
+		adapterProfiles: [getAdapterID(conversation)]
+	};
 
-	// var newUser = new User({ 
-	// 	givenName: user.givenName,
-	// 	lastName: user.lastName,
-	// 	profiles: user.profiles.map(profile => {
-	// 		const { type, link } = profile;
-	// 		return { type, link };
-	// 	})
-	// });
+	User.create(_.assign({}, defaults, user))
+		.then(user => {
+			console.log('THE CREATED USER', user);
+		})
+		.catch(error => {
+			console.log(error);
+			dispatch.say('an error occured while saving this user');
+		});
 
 });

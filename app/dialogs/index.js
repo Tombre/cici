@@ -16,5 +16,7 @@ module.exports = [
 	require('./users/editUserEmail'),
 	require('./users/editUserName'),
 	require('./users/editUserRole'),
-	require('./users/showUsers')
+	require('./users/showUsers'),
+	require('./users/whoAmI')
+	
 ];
