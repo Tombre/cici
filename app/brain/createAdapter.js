@@ -13,19 +13,20 @@ module.exports = function(id, adapter) {
 		const readStream = filterRead(eventStream).filter(e => (e.adapterID === id));
 		const sayStream = filterSend(eventStream)
 			.map(e => e.payload)
+			// .map(e => e.payload)
 			.filter(e => (e.adapterID === id));
 		
 		// push a message from the adapter to the message stream
 		function pushMessageEvent(event, trigger) {
 			event.adapterID = id;
 			event.triggerConversation = trigger || false;
-			eventStream.plug(Kefir.constant(recievedMessage(event)));
+			eventStream.dispatch(recievedMessage(event));
 		}
 
 		// push a speaking event to the adapters say steam
 		function pushSpeakEvent(event) {
 			event.adapterID = id;
-			eventStream.plug(Kefir.constant(sendMessage(event)));
+			eventStream.dispatch(sendMessage(event));
 		}
 
 		function subscribeToSpeakEvent(fn) {
