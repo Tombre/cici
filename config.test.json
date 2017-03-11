@@ -1,0 +1,6 @@
+{
+	"env": "test",
+	"database": {
+		"name": "cici_test"
+	}
+}

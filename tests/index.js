@@ -1,0 +1,2 @@
+const dialogs = require('./dialogs');
+

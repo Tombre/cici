@@ -4,7 +4,7 @@
   "description": "Natural Language AI for Culture Counts",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "NODE_ENV=test NODE_PATH=./app/ node ./tests/test_dialogs --harmony",
     "lint": "./node_modules/eslint/bin/eslint.js -c .eslintrc.js app/**",
     "start": "NODE_PATH=./app/ nodemon index.js --harmony --exec 'npm run lint && node'",
     "sync": "NODE_PATH=./app/ node ./bin/syncDialogs.js --harmony",
@@ -20,8 +20,7 @@
     "blessed": "^0.1.81",
     "chalk": "^1.1.3",
     "express": "^4.14.0",
-    "firebase-admin": "^4.0.3",
-    "kefir": "^3.6.0",
+    "kefir": "^3.7.1",
     "lodash": "^4.17.2",
     "makerule": "^1.0.3",
     "mongoose": "^4.7.5",
@@ -31,13 +30,14 @@
     "require-dir-all": "^0.4.10",
     "socket.io": "^1.7.2",
     "socket.io-client": "^1.7.2",
-    "superagent": "^3.2.0",
     "winston": "^2.3.0"
   },
   "devDependencies": {
+    "death": "^1.1.0",
     "eslint": "^3.16.1",
     "nodemon": "^1.11.0",
     "progress": "^1.1.8",
-    "promptly": "^2.1.0"
+    "promptly": "^2.1.0",
+    "yargs": "^6.6.0"
   }
 }
