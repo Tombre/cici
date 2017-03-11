@@ -15,7 +15,7 @@ Helper
 
 function chainMiddleWare() {
 	let fns = [...arguments];
-	return function() {
+	return function(next) {
 		fns.forEach(fn => fn.apply(this, [...arguments]));
 	}
 }
@@ -58,36 +58,36 @@ const userShema = mongoose.Schema({
 	},
 	adapterProfiles: [{
 		adapter: String,
-		id: String
+		userID: String
 	}]
-});
+}, { strict: 'throw' });
+
+/*----------------------------------------------------------
+Virtuals
+----------------------------------------------------------*/
+
+/*
+*	Fullname
+*	Fill out the fullname into the givenand last name, if one is provided
+*/
+
+userShema.virtual('fullname')
+	.get(function() {
+		 return this.givenName + ' ' + this.lastName;
+	})
+	.set(function(fullname) {
+		let [givenName, lastName] = splitName(fullname);
+		this.givenName = givenName;
+		if (lastName) {
+			this.lastName = lastName;	
+		} else {
+			delete this.lastName;
+		}
+	})
 
 /*----------------------------------------------------------
 MiddleWare
 ----------------------------------------------------------*/
-
-/*
-*	Compute Fullname
-*	Fill out the fullname into the givenand last name, if one is provided
-*/
-
-function computeFullNameForDoc(next) {
-
-	if (!this.fullname) return next();
-
-	let [givenName, lastName] = splitName(this.fullname);
-	this.givenName = givenName;
-	if (lastName) {
-		this.lastName = lastName;	
-	} else {
-		delete this.lastName;
-	}
-
-	delete this.fullname;
-	next();
-
-}
-
 
 /*
 *	Encrypt the passphrase
@@ -110,9 +110,7 @@ function encryptPassphrase(next) {
 
 /*----------------------------------------------------------*/
 
-
 userShema.pre('save', chainMiddleWare(
-	computeFullNameForDoc,
 	encryptPassphrase
 ));
 
@@ -151,7 +149,7 @@ function getUserFromAdapterEvent(response) {
 	let { adapterID, author } = response;
 	return User.findOne({
 			'adapterProfiles' : { 
-				$elemMatch: { adapter: adapterID, id: author } 
+				$elemMatch: { adapter: adapterID, userID: author } 
 			}
 		})
 		.catch(e => console.log(e))
