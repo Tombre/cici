@@ -151,11 +151,15 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			throw new Error(`You cannot say anything to a conversation after it has already ended`);
 		}
 
-		eventStream.dispatch(sendMessage({
+		const messageAction = sendMessage({
 			text: text,
 			adapterID: this.adapter,
 			source: this.source
-		}));
+		});
+
+		log(`Sending Message`, messageAction);
+
+		eventStream.dispatch(messageAction);
 	};
 
 	const dispatchAction = (name, params) => {
@@ -184,7 +188,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 	// Clear contexts. Clears all but the prime context if none are passed. To clear the prime you must clear manually
 	const clearContext = (context) => {
-		log('Clearing context', { context });
+		log('Clearing context', { context: (context || 'all') });
 		if (_.isString(context) || _.isArray(context)) {
 			let contexts = _.isArray(context) ? context : [context];
 			this.contexts = _.without(this.contexts, ...contexts);	
@@ -263,13 +267,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 				// clear the context so that it's not re-sent with the next query
 				clearContext();
-
-				log(`Intent interpretation and evaluation`, { 
-					name: intent.name,
-					initialIntent: intent.initialIntent,
-					dialog: intent.dialog
-				});
-
+				log(`Intent interpretation and evaluation`, { name: intent.name, dialog: intent.dialog });
 				// run each solution and pass the dispatch object, the event and the current state (shallow coppied)
 				intent.solutions.forEach(fn => fn(dispatch, e));
 
