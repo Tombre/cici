@@ -1,5 +1,5 @@
 const createAdapter = require('brain/createAdapter');
-const config = require('../../config.json')["socket"];
+const config = require('config').socket;
 const app = require('http').createServer();
 const io = require('socket.io')(app);
 

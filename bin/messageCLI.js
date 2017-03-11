@@ -1,6 +1,6 @@
 const blessed = require('blessed');
 const io = require('socket.io-client');
-const config = require('../config.json')["socket"];
+const config = require('../app/config').socket;
 const chalk = require('chalk');
 
 let socket = io(`http://localhost:${config.port}`, {

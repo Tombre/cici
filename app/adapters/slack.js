@@ -1,5 +1,5 @@
 const createAdapter = require('brain/createAdapter');
-const config = require('../../config.json')["slack"];
+const config = require('config').slack;
 const { RtmClient, CLIENT_EVENTS, RTM_EVENTS } = require('@slack/client');
 
 /*----------------------------------------------------------
