@@ -1,4 +1,4 @@
-const config = require('../../config.json')["api.ai"];
+const config = require('config')["api.ai"];
 const _ = require('lodash');
 const request = require('request');
 
