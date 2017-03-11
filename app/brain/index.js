@@ -2,7 +2,6 @@ const kefir = require('kefir');
 const _ = require('lodash');
 const { Conversation, doesConvoMatchEvent } = require('./conversation');
 const { filterbyEventType } = require('helpers/streams');
-
 const { MESSAGE_RECEIVE, MESSAGE_SEND } = require('brain/events/message');
 const { ACTION_FULFILL } = require('brain/events/actions');
 
@@ -19,6 +18,9 @@ function mapFromModuleToLIst(modules, key, evaluate) {
 
 function generateEventStream() {
 	let pool = kefir.pool();
+	// event stream should always be active so we add a no-op to onValue
+	pool.onValue(() => {});
+	// add a convenience dispatch method
 	pool.dispatch = (e) => pool.plug(kefir.constant(e));
 	return pool;
 }
@@ -37,23 +39,14 @@ function getIntent(intents, action) {
 Brain
 ----------------------------------------------------------*/
 
-module.exports = function(adapters, actions, dialogs, entities) {
-
-	const config = {};
-	const eventStream = generateEventStream();
+module.exports = function(adaptersConstructors, actionConstructors, dialogConstructors, entityConstructors) {
 
 	/*----------------------------------------------------------
 	setup
 	----------------------------------------------------------*/
 
-	adapters = mapFromModuleToLIst(adapters, 'id', adapter => adapter(eventStream, config));
-	actions = mapFromModuleToLIst(actions, 'id', action => action(config));
-	dialogs = mapFromModuleToLIst(dialogs, 'name', dialog => dialog(config));
-	entities = mapFromModuleToLIst(entities, 'name', entity => entity(config));
-
-	const intents = _.reduce(dialogs, (accum, dialog) => {
-		return _.assign({}, accum, dialog.intents);
-	}, {});
+	const config = {};
+	const eventStream = generateEventStream();
 
 	/*----------------------------------------------------------
 	Conversations
@@ -87,5 +80,15 @@ module.exports = function(adapters, actions, dialogs, entities) {
 			let action = actions[e.actionName] || actions['default'];
 			action.fn(eventStream.dispatch, e.parameters);
 		});
+
+	/*----------------------------------------------------------
+	Initialization
+	----------------------------------------------------------*/
+
+	const actions = mapFromModuleToLIst(actionConstructors, 'id', action => action(config));
+	const dialogs = mapFromModuleToLIst(dialogConstructors, 'name', dialog => dialog(config));
+	const entities = mapFromModuleToLIst(entityConstructors, 'name', entity => entity(config));
+	const intents = _.reduce(dialogs, (accum, dialog) => _.assign({}, accum, dialog.intents), {});
+	const adapters = mapFromModuleToLIst(adaptersConstructors, 'id', adapter => adapter(eventStream, config));
 
 }
