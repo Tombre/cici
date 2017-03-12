@@ -30,7 +30,7 @@ module.exports = createDialog('editUser-email', dialog => {
 	dialog.registerIntent(
 		dialog.intent('edit')
 			.fulfillWith((convo, response) => {
-				let user = convo.getState(getUser());
+				let user = getUser(convo.getState());
 				convo
 					.setContext(SET_EMAIL_TOO)
 					.say(`${getSubjectResponse(convo)} email is currently: "${user.email}", what would you like it changed too?`)

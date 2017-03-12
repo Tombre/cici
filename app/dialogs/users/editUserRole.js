@@ -20,7 +20,7 @@ module.exports = createDialog('editUser-role', dialog => {
 		Params
 	----------------------------------------------------------*/
 
-	const ROLE = dialog.param('role').entity('role');
+	const ROLE = dialog.param('role').entity('userRole');
 
 	/*----------------------------------------------------------
 		Intents
@@ -46,7 +46,7 @@ module.exports = createDialog('editUser-role', dialog => {
 				next => (convo, response) => {
 					let { role } = response.meaning.parameters;
 					if (role) {
-						convo.action({ toSet: { role } })
+						convo.setState({ toSet: { role } })
 						return next();
 					}
 					convo
