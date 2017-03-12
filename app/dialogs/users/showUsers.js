@@ -1,4 +1,5 @@
 const createDialog = require('brain/createDialog');
+const { User } = require('memory/user');
 
 /*----------------------------------------------------------
 	Dialog
@@ -21,9 +22,23 @@ module.exports = createDialog('show-users', dialog => {
 				`Who are the people you know?`
 			])
 			.fulfillWith((convo, response) => {
-				convo
-					.action('showUsers')
-					.endDialog();
+				User.find({})
+					.then(users => {
+						if (users && users.length) {
+							let userList = users.map(user => {
+								let { givenName, lastName, email } = user;
+								return `${lastName ? (givenName + ' ' + lastName) : givenName}: ${email}\n`;
+							})
+							convo.say(`These are the current users I know about:\n${userList.join('')}`);
+						} else {
+							convo.say(`I currently do not have any users in memory`);
+						}
+						convo.endDialog();
+					})
+					.catch(err => {
+						console.log(err);
+						convo.say('sorry, there was an error retrieving the users.').endDialog();
+					})
 			})
 	)
 

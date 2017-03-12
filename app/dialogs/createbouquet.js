@@ -131,7 +131,6 @@ module.exports = createDialog('createBouquet', dialog => {
 			.fulfillWith((dialog, response) => {
 				return dialog
 					.say('Great! Will send the flowers now')
-					.action('orderFlowers', boquetConfiguration)
 					.endDialog()
 			}))
 

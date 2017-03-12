@@ -46,3 +46,28 @@ const requireUserForFulfillment = next => (convo, response) => {
 }
 
 module.exports.requireUserForFulfillment = requireUserForFulfillment;
+
+
+/*
+*	Update user from state
+*	Updates the user from the sate's toSet attr
+*/
+
+const setUserFromState = next => (convo, response) => {
+	let { user, toSet } = convo.getState();
+	User.findById(user.id)
+		.then(user => {
+			Object.assign(user, toSet);
+			return user.save();
+		})
+		.then(user => {
+			convo.setState(Object.assign({}, setUser(user), { toSet: null }));
+			next();
+		})
+		.catch(err => {
+			console.log(err)
+			convo.say(`Sorry an error occured, I cannot update the user at this time`).endDialog();
+		})
+}
+
+module.exports.setUserFromState = setUserFromState;

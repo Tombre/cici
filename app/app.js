@@ -1,7 +1,6 @@
 Error.stackTraceLimit = Infinity;
 
 const adapters = require('./adapters')
-const actions = require('./actions')
 const dialogs = require('./dialogs')
 const entities = require('./entities')
 
@@ -16,7 +15,6 @@ module.exports = function Cici() {
 	connect(() => {
 		const brain = new Brain(
 			adapters,
-			actions,
 			dialogs,
 			entities
 		);

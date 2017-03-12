@@ -1,12 +1,13 @@
 const createDialog = require('brain/createDialog');
+const _ = require('lodash');
 const isEmail = require('validator/lib/isEmail');
-const { getUserFromEmail, getUserFromAdapterEvent } = require('memory/user');
+const { User, getUserFromEmail, getUserFromAdapterEvent } = require('memory/user');
 const { setSubject, getSubject } = require('state/general');
 const { setUserToCreate, getUserToCreate } = require('state/users');
 const { setToFulfill, getToFulfill } = require('state/fulfillment');
 const { chooseFor } = require('helpers/response');
 const { fulfillChain } = require('helpers/fulfillment');
-const { getSubjectResponse } = require('./userFactories');
+const { getSubjectResponse } = require('./userHelpers');
 
 /*----------------------------------------------------------
 Helper
@@ -19,6 +20,13 @@ function tryGetUser(userDocument, event) {
 			if (!user && userDocument.email) return getUserFromEmail(userDocument.email);
 			return user;
 		})
+}
+
+function getAdapterID(response) {
+	return {
+		adapter: response.adapterID,
+		userID: response.author
+	}
 }
 
 /*----------------------------------------------------------
@@ -335,10 +343,22 @@ module.exports = createDialog('newUser', dialog => {
 	dialog.registerIntent(
 		dialog.intent.approval(ASK_TO_CONFIRM_USER)
 			.fulfillWith((convo, response) => {
-				convo
-					.say("Ok, saving user")
-					.action('newUser', { user: getUserToCreate(convo.getState()) })
-					.endDialog();
+				
+				let user = getUserToCreate(convo.getState());
+				let defaults = {
+					role: 'user',
+					adapterProfiles: [getAdapterID(response)]
+				};
+
+				User.create(_.assign({}, defaults, user))
+					.then(user => {
+						convo.say(`Ok, I've saved the user`).endDialog();
+					})
+					.catch(error => {
+						console.log(error);
+						convo.say('an error occured while saving this user').endDialog();
+					});
+
 			})
 	)
 

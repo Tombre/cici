@@ -5,7 +5,6 @@ const prettyjson = require('prettyjson');
 const { query, DELETE } = require('helpers/api');
 const { filterRead, filterSend, filterbyEventType } = require('helpers/streams');
 const { sendMessage } = require('brain/events/message');
-const { fulfillAction } = require('brain/events/actions');
 const { choose } = require('helpers/response');
 const { DEBUG_TOGGLE, DEBUG_EVENT, debugEvent } = require('brain/events/debug');
 
@@ -64,11 +63,11 @@ function returnObservableMeaning(convo, event) {
 RESPONSE
 ----------------------------------------------------------*/
 
-function defaultResponse(dispatch, meaning) {
+function defaultResponse(convo, meaning) {
 	if (meaning.score === 1 && meaning.fulfillment.speech) {
-		return dispatch.say(meaning.fulfillment.speech);
+		return convo.say(meaning.fulfillment.speech);
 	}
-	return dispatch.say(choose([
+	return convo.say(choose([
 		`I'm sorry. I'm having trouble understanding the question.`,
 		`I think I may have misunderstood your last statement.`,
 		`I'm sorry. I didn't quite grasp what you just said.`,
@@ -162,10 +161,9 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		eventStream.dispatch(messageAction);
 	};
 
-	const dispatchAction = (name, params) => {
-		log(`Dispatching action`, { name, params });
-		let def = { conversation: this, params };
-		eventStream.dispatch(fulfillAction(name, def));
+	const dispatch = (event) => {
+		log(`Dispatching event`, { event });
+		eventStream.dispatch(event);
 	};
 
 	// sets an array of contexts to the conversation. Does not add duplicates
@@ -244,7 +242,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	*/
 	const evaluateIntentWithEvent = (intent, e) => {
 
-		let dispatch = { say, log, setContext, clearContext, endDialog, setState, getState, clearState, mapToIntent, action: dispatchAction };
+		let toPass = { say, log, setContext, clearContext, endDialog, setState, getState, clearState, mapToIntent, dispatch };
 
 		this.cognitiveFunction = 'evaluation';
 
@@ -254,22 +252,22 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 			console.log(e);
 		});
 
-		// run the solutions, passing dispatch and the meaning of the message. If they return a promise, we will wait for them
+		// run the solutions, passing toPass and the meaning of the message. If they return a promise, we will wait for them
 		// to complete before continuing
 		try {
 
 			if (!intent || intent.solutions.length === 0) {
 
 				log(`No matching intent, running default response`);
-				defaultResponse(dispatch, e.meaning, this.state);
+				defaultResponse(toPass, e.meaning, this.state);
 
 			} else {
 
 				// clear the context so that it's not re-sent with the next query
 				clearContext();
 				log(`Intent interpretation and evaluation`, { name: intent.name, dialog: intent.dialog });
-				// run each solution and pass the dispatch object, the event and the current state (shallow coppied)
-				intent.solutions.forEach(fn => fn(dispatch, e));
+				// run each solution and pass the toPass object, the event and the current state (shallow coppied)
+				intent.solutions.forEach(fn => fn(toPass, e));
 
 			}
 		} catch(e) {

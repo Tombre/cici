@@ -1,6 +1,7 @@
 const createDialog = require('brain/createDialog');
 const { getUser } = require('state/users');
-const { getSubjectResponse } = require('./userFactories');
+const { getSubjectResponse, setUserFromState } = require('./userHelpers');
+const { fulfillChain } = require('helpers/fulfillment');
 const { roleTypes } = require('memory/user');
 
 /*----------------------------------------------------------
@@ -28,7 +29,7 @@ module.exports = createDialog('editUser-role', dialog => {
 	dialog.registerIntent(
 		dialog.intent('edit')
 			.fulfillWith((convo, response) => {
-				let user = convo.getState(getUser());
+				let user = getUser(convo.getState());
 				let roles = roleTypes.join('\n');
 				convo
 					.setContext(SET_ROLE_TOO)
@@ -41,21 +42,25 @@ module.exports = createDialog('editUser-role', dialog => {
 			.requires(SET_ROLE_TOO)
 			.params([ROLE])
 			.userSays(params => [params.role()], true)
-			.fulfillWith((convo, response) => {
-
-				let { role } = response.meaning.parameters;
-				let user = convo.getState(getUser());
-				if (role) {
-					return 
-						convo
-							.action('setUser', { user, toSet: { role } })
-							.say('ok, changing your role now')
-							.mapToIntent('editUser/any-other-settings-to-change')
+			.fulfillWith(fulfillChain(
+				next => (convo, response) => {
+					let { role } = response.meaning.parameters;
+					if (role) {
+						convo.action({ toSet: { role } })
+						return next();
+					}
+					convo
+						.setContext(SET_ROLE_TOO)
+						.say(`sorry, I wasn't able to recognise a role there. What would you like ${getSubjectResponse(convo)} role changed too?`);
+				},
+				setUserFromState,
+				next => (convo, response) => {
+					convo
+						.say('ok, changing your role now')
+						.mapToIntent('editUser/any-other-settings-to-change')
 				}
-				convo
-					.setContext(SET_ROLE_TOO)
-					.say(`sorry, I wasn't able to recognise a role there. What would you like ${getSubjectResponse(convo)} role changed too?`);
-			})
+			)
+		)
 	)
 
 })

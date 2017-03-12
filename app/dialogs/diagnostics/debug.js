@@ -1,5 +1,6 @@
 const _ = require('lodash');
 const createDialog = require('brain/createDialog');
+const { debugToggle } = require('brain/events/debug');
 
 module.exports = createDialog('debug', dialog => {
 
@@ -16,7 +17,7 @@ module.exports = createDialog('debug', dialog => {
 			])
 			.fulfillWith((dialog, response) => {
 				return dialog
-					.action('debugMode', { enabled: true, author: response.author })
+					.dispatch(debugToggle(true, response.author))
 					.clearContext(true)
 					.say('Debug mode started')
 			}))
@@ -34,7 +35,7 @@ module.exports = createDialog('debug', dialog => {
 			])
 			.fulfillWith((dialog, response) => {
 				return dialog
-					.action('debugMode', { enabled: false, author: response.author })
+					.dispatch(debugToggle(false, response.author))
 					.clearContext(true)
 					.say('Debug mode stopped')
 			}))

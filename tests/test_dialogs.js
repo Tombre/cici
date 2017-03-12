@@ -6,7 +6,6 @@ const onExit = require('death');
 const dialogFlows = require('./dialogFlows');
 
 const createAdapter = require('brain/createAdapter');
-const actions = require('actions')
 const dialogs = require('dialogs')
 const entities = require('entities')
 
@@ -92,7 +91,6 @@ function start() {
 	connect(() => {
 		const brain = new Brain(
 			[createAdapter('test', runTranscript)],
-			actions,
 			dialogs,
 			entities
 		);

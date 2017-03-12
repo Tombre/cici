@@ -1,6 +1,7 @@
 const createDialog = require('brain/createDialog');
 const { getUser } = require('state/users');
-const { getSubjectResponse } = require('./userFactories');
+const { getSubjectResponse, setUserFromState } = require('./userHelpers');
+const { fulfillChain } = require('helpers/fulfillment');
 const isEmail = require('validator/lib/isEmail');
 
 /*----------------------------------------------------------
@@ -41,22 +42,25 @@ module.exports = createDialog('editUser-email', dialog => {
 			.requires(SET_EMAIL_TOO)
 			.params([EMAIL, EMAIL_ORIGINAL])
 			.userSays(params => [params.email()], true)
-			.fulfillWith((convo, response) => {
-				let { emailOrigional } = response.meaning.parameters;
-				let email = emailOrigional;
-				let user = convo.getState(getUser());
-
-				if (!email || !isEmail(email)) {
-					return convo
-						.setContext(SET_EMAIL_TOO)
-						.say(`sorry, I wasn't able to recognise an email there. Can you try again?`);
+			.fulfillWith(fulfillChain(
+				next => (convo, response) => {
+					let { emailOrigional } = response.meaning.parameters;
+					let email = emailOrigional;
+					if (!email || !isEmail(email)) {
+						return convo
+							.setContext(SET_EMAIL_TOO)
+							.say(`sorry, I wasn't able to recognise an email there. Can you try again?`);
+					}
+					convo.setState({ toSet: { email } });
+					next();
+				},
+				setUserFromState,
+				next => (convo, response) => {
+					convo
+						.say('ok, the email address has been updated')
+						.mapToIntent('editUser/any-other-settings-to-change')
 				}
-
-				return convo
-					.action('setUser', { user, toSet: { email } })
-					.say('ok, changing your email now')
-					.mapToIntent('editUser/any-other-settings-to-change')
-			})
+			))
 	)
 
 })

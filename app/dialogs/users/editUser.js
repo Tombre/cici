@@ -3,7 +3,7 @@ const _ = require('lodash');
 const { getUsersFromName, getUserFromEmail, getUserFromAdapterEvent } = require('memory/user');
 const { setUser, getUser } = require('state/users');
 const { setSubject, getSubject } = require('state/general');
-const { getSubjectResponse } = require('./userFactories');
+const { getSubjectResponse } = require('./userHelpers');
 const { fulfillChain } = require('helpers/fulfillment');
 
 /*----------------------------------------------------------
@@ -213,7 +213,10 @@ module.exports = createDialog('editUser', dialog => {
 		dialog.intent('select-from-edit-list')
 			.requires(CHOOSE_FROM_EDIT_LIST)
 			.params([USER_SETTINGS])
-			.userSays(params => getEditCommands(params, 'userSetting', 'name'))
+			.userSays(params => {
+				let makeExamples = _.partial(getEditCommands, params, 'userSetting');
+				return [].concat(makeExamples('name'), makeExamples('role'), makeExamples('email'));
+			})
 			.fulfillWith((convo, response) => {
 				let { userSetting } = response.meaning.parameters;
 				if (!userSetting) { 

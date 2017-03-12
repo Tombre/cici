@@ -3,7 +3,6 @@ const _ = require('lodash');
 const { Conversation, doesConvoMatchEvent } = require('./conversation');
 const { filterbyEventType } = require('helpers/streams');
 const { MESSAGE_RECEIVE, MESSAGE_SEND } = require('brain/events/message');
-const { ACTION_FULFILL } = require('brain/events/actions');
 
 /*----------------------------------------------------------
 Helper
@@ -39,7 +38,7 @@ function getIntent(intents, action) {
 Brain
 ----------------------------------------------------------*/
 
-module.exports = function(adaptersConstructors, actionConstructors, dialogConstructors, entityConstructors) {
+module.exports = function(adaptersConstructors, dialogConstructors, entityConstructors) {
 
 	/*----------------------------------------------------------
 	setup
@@ -69,23 +68,9 @@ module.exports = function(adaptersConstructors, actionConstructors, dialogConstr
 		});
 
 	/*----------------------------------------------------------
-	Action Fulfillment
-	----------------------------------------------------------*/
-
-	// fulfills an action by running it's associated function.
-
-	filterbyEventType(ACTION_FULFILL, eventStream)
-		.map(e => e.payload)
-		.observe(e => {
-			let action = actions[e.actionName] || actions['default'];
-			action.fn(eventStream.dispatch, e.parameters);
-		});
-
-	/*----------------------------------------------------------
 	Initialization
 	----------------------------------------------------------*/
 
-	const actions = mapFromModuleToLIst(actionConstructors, 'id', action => action(config));
 	const dialogs = mapFromModuleToLIst(dialogConstructors, 'name', dialog => dialog(config));
 	const entities = mapFromModuleToLIst(entityConstructors, 'name', entity => entity(config));
 	const intents = _.reduce(dialogs, (accum, dialog) => _.assign({}, accum, dialog.intents), {});

@@ -8,7 +8,6 @@ module.exports = [
 	
 	// General
 	require('./general/greetings'),
-	require('./general/random'),
 	
 	// User
 	require('./users/newUser'),
