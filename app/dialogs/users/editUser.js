@@ -224,8 +224,7 @@ module.exports = createDialog('editUser', dialog => {
 						.setContext(CHOOSE_FROM_EDIT_LIST)
 						.say(`Sorry, I wasn't able to understand which setting you meant. Which one of the above would you like to edit?`)
 				}
-				convo
-					.mapToIntent(`editUser-${userSetting}/edit`);
+				convo.mapToIntent(`editUser-${userSetting}/edit`);
 			})
 	)
 
