@@ -16,6 +16,10 @@ module.exports = [
 	require('./users/editUserName'),
 	require('./users/editUserRole'),
 	require('./users/showUsers'),
-	require('./users/whoAmI')
+
+	require('./users/showMyDetails'),
+
+	// Authentication
+	require('./authentication/signin')
 	
 ];
