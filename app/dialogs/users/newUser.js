@@ -1,7 +1,7 @@
 const createDialog = require('brain/createDialog');
 const _ = require('lodash');
 const isEmail = require('validator/lib/isEmail');
-const { User, getUserFromEmail, getUserFromAdapterEvent } = require('memory/user');
+const { User, getUserFromEmail, getUserFromAdapterEvent, getAdapterProfile } = require('memory/user');
 const { setSubject, getSubject } = require('state/general');
 const { setUserToCreate, getUserToCreate } = require('state/users');
 const { setToFulfill, getToFulfill } = require('state/fulfillment');
@@ -20,13 +20,6 @@ function tryGetUser(userDocument, event) {
 			if (!user && userDocument.email) return getUserFromEmail(userDocument.email);
 			return user;
 		})
-}
-
-function getAdapterID(response) {
-	return {
-		adapter: response.adapterID,
-		userID: response.author
-	}
 }
 
 /*----------------------------------------------------------
@@ -203,6 +196,7 @@ module.exports = createDialog('newUser', dialog => {
 		dialog.intent('introduce-1st-person', true)
 			.params([FULLNAME])
 			.userSays(params => [
+				`Can I get a new user?`,
 				`Hi, I'm ${params.fullname('Joe Shatner')}`,
 				`Hello, I'm ${params.fullname('Xavier')}`
 			])
@@ -210,10 +204,10 @@ module.exports = createDialog('newUser', dialog => {
 				setUserName,
 				next => (convo, response) => {
 					let { fullname } = response.meaning.parameters;
-					convo
-						.setContext(SHOULD_CREATE_USER)
-						.setState(setSubject('self'))
-						.say(`Hi ${fullname}. You don't seem to be in any of my records, would you like to create a new user for yourself?`);
+					convo.setContext(SHOULD_CREATE_USER).setState(setSubject('self'));
+					if (fullname) {
+						convo.say(`Hi ${fullname}. You don't seem to be in any of my records, would you like to create a new user for yourself?`);
+					}
 					next();
 				}
 			))
@@ -347,7 +341,7 @@ module.exports = createDialog('newUser', dialog => {
 				let user = getUserToCreate(convo.getState());
 				let defaults = {
 					role: 'user',
-					adapterProfiles: [getAdapterID(response)]
+					adapterProfiles: [getAdapterProfile(response)]
 				};
 
 				User.create(_.assign({}, defaults, user))
@@ -410,7 +404,7 @@ module.exports = createDialog('newUser', dialog => {
 		dialog.intent.refusal(SHOULD_GOTO_EDIT)
 			.fulfillWith((convo, response) => {
 				convo
-					.say("Ok, I can't create a new user for then sorry")
+					.say("Ok, I can't create a new user sorry")
 					.endDialog();
 			})
 	)
