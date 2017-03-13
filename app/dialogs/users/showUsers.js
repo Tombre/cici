@@ -26,8 +26,8 @@ module.exports = createDialog('show-users', dialog => {
 					.then(users => {
 						if (users && users.length) {
 							let userList = users.map(user => {
-								let { givenName, lastName, email } = user;
-								return `${lastName ? (givenName + ' ' + lastName) : givenName}: ${email}\n`;
+								let { fullname, email } = user;
+								return `${fullname}: ${email}\n`;
 							})
 							convo.say(`These are the current users I know about:\n${userList.join('')}`);
 						} else {
