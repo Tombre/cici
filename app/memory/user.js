@@ -1,31 +1,12 @@
 const mongoose = require('mongoose');
 const isEmail = require('validator/lib/isEmail');
 const _ = require('lodash');
-const bcrypt = require('bcrypt');
-
-/*----------------------------------------------------------
-Config
-----------------------------------------------------------*/
-
-const SALT_WORK_FACTOR = 10;
-
-/*----------------------------------------------------------
-Helper
-----------------------------------------------------------*/
-
-function chainMiddleWare() {
-	let fns = [...arguments];
-	return function(next) {
-		fns.forEach(fn => fn.apply(this, [...arguments]));
-	}
-}
-
 
 /*----------------------------------------------------------
 Setup
 ----------------------------------------------------------*/
 
-const roleTypes = ['master', 'admin', 'user'];
+const roleTypes = ['user', 'admin', 'master'];
 
 module.exports.roleTypes = roleTypes;
 
@@ -53,12 +34,9 @@ const userShema = mongoose.Schema({
 			message: '{VALUE} is not a valid email address'
 		}
 	},
-	passPhrase: {
-		type: String
-	},
 	adapterProfiles: [{
 		adapter: String,
-		userID: String
+		adapterUserID: String
 	}]
 }, { strict: 'throw' });
 
@@ -73,7 +51,7 @@ Virtuals
 
 userShema.virtual('fullname')
 	.get(function() {
-		 return this.givenName + ' ' + this.lastName;
+		 return ( this.lastName ? this.givenName + ' ' + this.lastName : this.givenName);
 	})
 	.set(function(fullname) {
 		let [givenName, lastName] = splitName(fullname);
@@ -85,34 +63,6 @@ userShema.virtual('fullname')
 		}
 	})
 
-/*----------------------------------------------------------
-MiddleWare
-----------------------------------------------------------*/
-
-/*
-*	Encrypt the passphrase
-*	Encrypts a passphrase to the db. Uses a salt set in the config above
-*/
-
-function encryptPassphrase(next) {
-	
-	let user = this;
-	if (!user.passPhrase || !user.isModified('passPhrase')) return next();
-
-	bcrypt.genSalt(SALT_WORK_FACTOR)
-		.then(salt => bcrypt.hash(this.passPhrase, salt))
-		.then(hash => {
-			user.passPhrase = hash;
-			next();
-		})
-		.catch(err => next(err));
-}
-
-/*----------------------------------------------------------*/
-
-userShema.pre('save', chainMiddleWare(
-	encryptPassphrase
-));
 
 /*----------------------------------------------------------
 Model
@@ -149,7 +99,7 @@ function getUserFromAdapterEvent(response) {
 	let { adapterID, author } = response;
 	return User.findOne({
 			'adapterProfiles' : { 
-				$elemMatch: { adapter: adapterID, userID: author } 
+				$elemMatch: { adapter: adapterID, adapterUserID: author } 
 			}
 		})
 		.catch(e => console.log(e))
@@ -182,3 +132,31 @@ function splitName(fullName) {
 }
 
 module.exports.splitName = splitName;
+
+
+/*
+*	Has Permission
+*	Tests if the user has permission to edit a particular attribute
+*/
+function hasPermission(role, needed) {
+	if (roleTypes.indexOf(role) < roleTypes.indexOf(needed)) {
+		return false;
+	}
+	return true;
+}
+
+module.exports.hasPermission = hasPermission;
+
+
+/*
+* 	Get adapter profile	
+*	Takes a response and gets an adapter profile from it
+*/
+function getAdapterProfile(response) {
+	return {
+		adapter: response.adapterID,
+		adapterUserID: response.author
+	}
+}
+
+module.exports.getAdapterProfile = getAdapterProfile;
