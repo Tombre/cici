@@ -32,7 +32,7 @@ module.exports = createDialog('editUser-name', dialog => {
 				let user = getUser(convo.getState());
 				convo
 					.setContext(SET_NAME_TOO)
-					.say(`${getSubjectResponse(convo)} name is currently: "${user.lastName ? (user.givenName + ` ${user.lastName}`) : user.givenName }", what would you like it to be changed to?`)
+					.say(`${getSubjectResponse(convo)} name is currently: "${user.fullname}", what would you like it to be changed to?`)
 			})
 	)
 
