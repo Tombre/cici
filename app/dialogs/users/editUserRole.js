@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const createDialog = require('brain/createDialog');
 const { getUser } = require('state/users');
 const { getSubjectResponse, setUserFromState } = require('./userHelpers');
@@ -30,10 +31,11 @@ module.exports = createDialog('editUser-role', dialog => {
 		dialog.intent('edit')
 			.fulfillWith((convo, response) => {
 				let user = getUser(convo.getState());
-				let roles = roleTypes.join('\n');
+				let roles = _.without(roleTypes, 'master').join('\n');
+				let subject = getSubjectResponse(convo);
 				convo
 					.setContext(SET_ROLE_TOO)
-					.say(`${getSubjectResponse(convo)} role is currently: "${user.role}", you can change it any one of these:\n${roles}`)
+					.say(`${subject} role is currently: "${user.role}", you can change it any one of these:\n${roles}\n\nWarning: Changing ${subject} role will effect what options can be run from ${subject} account.`)
 			})
 	)
 
