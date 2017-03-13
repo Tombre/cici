@@ -1,6 +1,7 @@
 const createAdapter = require('brain/createAdapter');
 const config = require('config').slack;
 const { RtmClient, CLIENT_EVENTS, RTM_EVENTS } = require('@slack/client');
+const makeRemoveFormatting = require('slack-remove-formatting');
 
 /*----------------------------------------------------------
 Setup
@@ -16,13 +17,17 @@ Adapter
 module.exports = createAdapter('slack', function(readMessage, onSayEvent) {
 
 	let botID;
+	let removeFormatting;
 
 	rtm.on(CLIENT_EVENTS.RTM.AUTHENTICATED, function(rtmStartData) {
 		botID = rtmStartData.self.id;
+		removeFormatting = makeRemoveFormatting(rtmStartData)
 		console.log(`Logged in as ${rtmStartData.self.name} of team ${rtmStartData.team.name}, but not yet connected to a channel`);
 	});
 
 	rtm.on(RTM_EVENTS.MESSAGE, function handleRtmMessage(message) {
+
+		console.log('MESSAGE',message);
 		
 		if (message.user === botID) return;
 
@@ -30,7 +35,7 @@ module.exports = createAdapter('slack', function(readMessage, onSayEvent) {
 		if (message.text.indexOf(`@${botID}`) >= 0) convoStarter = true;
 
 		readMessage({
-			text: message.text,
+			text: removeFormatting(message.text),
 			adapterEvent: message,
 			author: message.user,
 			source: {
