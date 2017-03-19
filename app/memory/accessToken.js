@@ -90,9 +90,10 @@ Functions
 *	Authenticate
 *	Authenticates a passphrase to a token
 */
-function authenticate(token, passphrase) {
+function authenticate(token, passphrase, adapterID, userID) {
 	return bcrypt.compare(passphrase, token.passphrase)
 		.then(isMatch => {
+			if (adapterID !== token.adapterID || userID !== token.userID) return false;
 			if (isMatch === true) return true;
 			return false
 		})

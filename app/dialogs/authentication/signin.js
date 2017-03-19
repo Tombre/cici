@@ -62,7 +62,7 @@ const authenticateCredentials = next => (convo, response) => {
 			if (!token) {
 				return Promise.reject('Sorry, your token has expired')
 			}
-			return authenticate(token, passphrase);
+			return authenticate(token, passphrase, response.adapterID, response.author);
 		})
 		.then(auth => {
 			
