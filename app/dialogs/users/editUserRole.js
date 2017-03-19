@@ -3,7 +3,7 @@ const createDialog = require('brain/createDialog');
 const { getUser } = require('state/users');
 const { getSubjectResponse, setUserFromState } = require('./userHelpers');
 const { fulfillChain } = require('helpers/fulfillment');
-const { roleTypes } = require('memory/user');
+const { roleTypes, requirePermission } = require('memory/user');
 
 /*----------------------------------------------------------
 	Contexts
@@ -29,14 +29,21 @@ module.exports = createDialog('editUser-role', dialog => {
 
 	dialog.registerIntent(
 		dialog.intent('edit')
-			.fulfillWith((convo, response) => {
-				let user = getUser(convo.getState());
-				let roles = _.without(roleTypes, 'master').join('\n');
-				let subject = getSubjectResponse(convo);
-				convo
-					.setContext(SET_ROLE_TOO)
-					.say(`${subject} role is currently: "${user.role}", you can change it any one of these:\n${roles}\n\nWarning: Changing ${subject} role will effect what options can be run from ${subject} account.`)
-			})
+			.fulfillWith(fulfillChain(
+				requirePermission('admin', (convo, response) => {
+					convo
+						.say('you do not have the required permisions to edit roles')
+						.mapToIntent('editUser/any-other-settings-to-change')
+				}),
+				next => (convo, response) => {
+					let user = getUser(convo.getState());
+					let roles = _.without(roleTypes, 'master').join('\n');
+					let subject = getSubjectResponse(convo);
+					convo
+						.setContext(SET_ROLE_TOO)
+						.say(`${subject} role is currently: "${user.role}", you can change it any one of these:\n${roles}\n\nWarning: Changing ${subject} role will effect what options can be run from ${subject} account.`)
+				}
+			))
 	)
 
 	dialog.registerIntent(

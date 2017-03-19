@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const isEmail = require('validator/lib/isEmail');
 const _ = require('lodash');
+const { getUser, setUser } = require('state/users');
 
 /*----------------------------------------------------------
 Setup
@@ -160,3 +161,31 @@ function getAdapterProfile(response) {
 }
 
 module.exports.getAdapterProfile = getAdapterProfile;
+
+
+/*----------------------------------------------------------
+Fulfillment
+----------------------------------------------------------*/
+
+
+/*
+*	Require permission
+*	Fulfillment that requires the user to be at a certain permission 
+*/
+module.exports.requirePermission = (permissionLevel, msg) => next => (convo, response) => {
+	msg = msg || `Sorry, you do not have the nessicary permissions to perform that action`;
+	new Promise.resolve(getUser(convo.getState())) 
+		.then(user => {
+			if (!user) return getUserFromAdapterEvent(response)
+			return user;
+		})
+		then(user => {
+			convo.setState(setUser(user));
+			if (hasPermission(user.role, permissionLevel)) {
+				return next();
+			}
+			if (_.isFunction(msg)) return msg(convo, response);
+			convo.say(msg).endDialog();
+		})
+}
+
