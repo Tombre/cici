@@ -1,5 +1,5 @@
 const createAdapter = require('brain/createAdapter');
-const config = require('config').slack;
+const config = require('config').services.slack;
 const { RtmClient, CLIENT_EVENTS, RTM_EVENTS } = require('@slack/client');
 const makeRemoveFormatting = require('slack-remove-formatting');
 
