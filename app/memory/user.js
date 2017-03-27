@@ -179,7 +179,7 @@ module.exports.requirePermission = (permissionLevel, msg) => next => (convo, res
 			if (!user) return getUserFromAdapterEvent(response)
 			return user;
 		})
-		then(user => {
+		.then(user => {
 			convo.setState(setUser(user));
 			if (hasPermission(user.role, permissionLevel)) {
 				return next();
