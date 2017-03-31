@@ -38,6 +38,13 @@ const userShema = mongoose.Schema({
 	adapterProfiles: [{
 		adapter: String,
 		adapterUserID: String
+	}],
+	services: [{
+		name: String,
+		userID: String,
+		profile: Object,
+		accessToken: String,
+		refreshToken: String
 	}]
 }, { strict: 'throw' });
 
@@ -163,6 +170,46 @@ function getAdapterProfile(response) {
 module.exports.getAdapterProfile = getAdapterProfile;
 
 
+/*
+* 	Create Adapter Profile	
+*/
+function createAdapterProfile(userID, adapter, adapterUserID) {
+	return new Promise((resolve, reject) => {
+		User.findByIdAndUpdate(
+			userID,
+			{ $push: { "adapterProfiles": { adapter, adapterUserID } } },
+			{ upsert: true, runValidators: true },
+			(err, user) => {
+				if (err) return reject(err);
+				resolve(user);
+			}
+		)
+	});
+}
+
+module.exports.createAdapterProfile = createAdapterProfile;
+
+
+/*
+* 	Remove Adapter Profile	
+*/
+function removeAdapterProfile(userID, adapter) {
+	return new Promise((resolve, reject) => {
+		User.findByIdAndUpdate(
+			userID,
+			{ $pull: { "adapterProfiles": { adapter } } },
+			{ runValidators: true },
+			(err, user) => {
+				if (err) return reject(err);
+				resolve(user);
+			}
+		)
+	});
+}
+
+module.exports.removeAdapterProfile = removeAdapterProfile;
+
+
 /*----------------------------------------------------------
 Fulfillment
 ----------------------------------------------------------*/
@@ -172,7 +219,7 @@ Fulfillment
 *	Require permission
 *	Fulfillment that requires the user to be at a certain permission 
 */
-module.exports.requirePermission = (permissionLevel, msg) => next => (convo, response) => {
+const requirePermission = (permissionLevel, msg) => next => (convo, response) => {
 	msg = msg || `Sorry, you do not have the nessicary permissions to perform that action`;
 	new Promise.resolve(getUser(convo.getState())) 
 		.then(user => {
@@ -189,3 +236,23 @@ module.exports.requirePermission = (permissionLevel, msg) => next => (convo, res
 		})
 }
 
+module.exports.requirePermission = requirePermission;
+
+
+/*
+*	Require Authenticated User
+*	Fulfillment that requires a user to be logged in
+*/
+
+const requrieAuthenticatedUser = next => (convo, response) => {
+	getUserFromAdapterEvent(response)
+		.then(user => {
+			if (!user) {
+				return convo.say('You need to be an authenticated user to do this.').endDialog();
+			}
+			convo.setState(setUser(user));
+			next();
+		})
+}
+
+module.exports.requrieAuthenticatedUser = requrieAuthenticatedUser;

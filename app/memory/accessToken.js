@@ -1,15 +1,12 @@
 const mongoose = require('mongoose');
 const _ = require('lodash');
-const bcrypt = require('bcrypt');
-const password = require('password');
+const crypto = require('crypto');
 const { sendMail } = require('helpers/nodemailer');
 const removeTabs = require('remove-tabs');
 
 /*----------------------------------------------------------
 Config
 ----------------------------------------------------------*/
-
-const SALT_WORK_FACTOR = 10;
 
 /*----------------------------------------------------------
 Helper
@@ -36,12 +33,20 @@ const accessTokenSchema = mongoose.Schema({
 		type: String,
 		required: true
 	},
-	adapterID: {
+	tokenType: {
+		type: String,
+		enum: ['adapter', 'service'],
+		required: true	
+	},
+	tokenTargetID: {
 		type: String,
 		required: true
 	},
-	passphrase: {
+	token: {
 		type: String
+	},
+	options: {
+		type: Object
 	}
 }, { strict: 'throw' });
 
@@ -50,28 +55,27 @@ MiddleWare
 ----------------------------------------------------------*/
 
 /*
-*	Encrypt the passphrase
-*	Encrypts a passphrase to the db. Uses a salt set in the config above
+*	Generate Token
+*	Generates a random token if one is not already added
 */
 
-function encryptPassphrase(next) {
-	
-	let accessToken = this;
-	if (!accessToken.passphrase || !accessToken.isModified('passphrase')) return next();
+function generateToken(next) {
 
-	bcrypt.genSalt(SALT_WORK_FACTOR)
-		.then(salt => bcrypt.hash(this.passphrase, salt))
-		.then(hash => {
-			accessToken.passphrase = hash;
-			next();
-		})
-		.catch(err => next(err));
+	let accessToken = this;
+	if (accessToken.token && !accessToken.isModified('token')) return next();
+
+	const buf = crypto.randomBytes(20, (err, buf) => {
+		if (err) return next(err);
+		accessToken.token = buf.toString('hex');
+		next();
+	});
+
 }
 
 /*----------------------------------------------------------*/
 
 accessTokenSchema.pre('save', chainMiddleWare(
-	encryptPassphrase
+	generateToken
 ));
 
 
@@ -86,50 +90,64 @@ module.exports.AccessToken = AccessToken;
 Functions
 ----------------------------------------------------------*/
 
-/*
-*	Authenticate
-*	Authenticates a passphrase to a token
-*/
-function authenticate(token, passphrase, adapterID, userID) {
-	return bcrypt.compare(passphrase, token.passphrase)
-		.then(isMatch => {
-			if (adapterID !== token.adapterID || userID !== token.userID) return false;
-			if (isMatch === true) return true;
-			return false
-		})
-}
-
-module.exports.authenticate = authenticate;
-
 
 /*
-*	Make access token
-*	Makes a token for the user to say back to the bot, this will authenticated them to an adapter. The token will expire after 10 minutes
+*	Makes an adapter access token
+*	Makes a token which will be sent to the users email address. When clicked, this will authenticated them to an adapter. The token will expire after 10 minutes.
 */
-function makeAccessToken(user, adapterID) {
 
-	let passphrase = password(5);
-	let token = new AccessToken({ userID: user._id, adapterID, passphrase })
-	return token.save()
-		.then(token => sendMail(
-			user.email, 
-			'Your access token', 
-			removeTabs(`
-				Hi ${user.fullname},
+function makeAdapterAccessToken(user, adapterID, adapterUserID) {
 
-				You recently requested an access token to conenct your Cici accout to a new channel (${adapterID}). Your access token is below:
-				${passphrase}
+	let accessToken = new AccessToken({ 
+		userID: user._id, 
+		tokenType: 'adapter', 
+		tokenTargetID: adapterID,
+		options: { adapterUserID }
+	});
 
-				To use the access token, just copy and paste it into the conversation we're already having about getting you authented. You may need to ask to be authenticated again if that conversation has ended.
+	return accessToken.save()
+		.then(accessToken => {
+			return sendMail(
+				user.email, 
+				'Your access token', 
+				removeTabs`
+					Hi ${user.fullname},
 
-				if you didn't ask for an access token, then you can ignore this email.
+					You recently requested an access token to conenct your Cici accout to a new channel (${adapterID}). Your access token is below:
+					<a href="http://localhost:3000/auth/${accessToken.token}">http://localhost:3000/auth/${accessToken.token}</a>
 
-				Thanks,
-				Cici
-			`)
-		))
-		.then(info => token)
+					To use the access token, just copy and paste it into the conversation we're already having about getting you authented. You may need to ask to be authenticated again if that conversation has ended.
+
+					if you didn't ask for an access token, then you can ignore this email.
+
+					Thanks,
+					Cici
+				`)
+			}
+		)
+		.then(info => accessToken)
 
 }
 
-module.exports.makeAccessToken = makeAccessToken;
+module.exports.makeAdapterAccessToken = makeAdapterAccessToken;
+
+
+/*
+*	Make service access token
+*	Generates an access token that you can use to connect an oauth service
+*/
+
+function makeServiceAccessToken(user, service, scope) {
+
+	let accessToken = new AccessToken({ 
+		userID: user._id, 
+		tokenType: 'service', 
+		tokenTargetID: service,
+		options: { scope }
+	});
+
+	return accessToken.save()
+
+}
+
+module.exports.makeServiceAccessToken = makeServiceAccessToken;

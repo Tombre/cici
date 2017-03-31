@@ -1,7 +1,7 @@
 const createDialog = require('brain/createDialog');
 const { fulfillChain } = require('helpers/fulfillment');
 const { getUserFromAdapterEvent, getUserFromEmail, getAdapterProfile, User } = require('memory/user');
-const { authenticate, makeAccessToken, AccessToken } = require('memory/accessToken');
+const { makeAdapterAccessToken } = require('memory/accessToken');
 const isEmail = require('validator/lib/isEmail');
 
 /*----------------------------------------------------------
@@ -32,77 +32,19 @@ const askForEmail = next => (convo, response) => {
 *	Creates an access token that is sent to the users email address, then asks for it.
 */
 
-const askForPassphrase = next => (convo, response) => {
+const sendToken = next => (convo, response) => {
 	let { login } = convo.getState();	
-	return makeAccessToken(login.user, response.adapterID)
+	let {adapterID, author} = response;
+	return makeAdapterAccessToken(login.user, adapterID, author)
 		.then(token => {
 			convo
-				.setState({ login: Object.assign(login, { tokenID: token._id }) })
-				.setContext(DECLARE_PASSPHRASE)
-				.say(`I've sent an access token to your email address, please paste it as the next message once you recieve it.`)
+				.say(`I've sent an access token link to your email address. When you recieve it, click on the authenticaion link to connect your account.`)
+				.endDialog();
 		})
 		.catch(err => {
 			console.log(err);
 			convo.say(`sorry, an error occured while trying to authenticate you, please try again later`).endDialog();
 		})
-}
-
-
-/*
-*	Authenticate Credentials
-*	Authenticated the credentials of the user
-*/
-
-const authenticateCredentials = next => (convo, response) => {
-	
-	const { user, passphrase, tokenID } = convo.getState().login;
-	
-	AccessToken.findById(tokenID)
-		.then(token => {
-			if (!token) {
-				return Promise.reject('Sorry, your token has expired')
-			}
-			return authenticate(token, passphrase, response.adapterID, response.author);
-		})
-		.then(auth => {
-			
-			if (auth === false) {
-				let login = convo.getState().login;
-				login.passphrase = null;				
-				return convo
-					.setState({ login })
-					.setContext(DECLARE_PASSPHRASE)
-					.say(`Your passphrase is incorrect, Please try again.`)
-			}
-
-			return new Promise((resolve, reject) => {
-				User.findByIdAndUpdate(
-					user.id,
-					{ $push: { "adapterProfiles": getAdapterProfile(response) } },
-					{ upsert: true, runValidators: true },
-					(err, user) => {
-						if (err) return reject(err);
-						resolve(user);
-					}
-				)
-			});
-				
-		})
-		.then(user => {
-			convo
-				.say(`Thankyou ${user.fullname}, you have been successfully authenticated to this channel`)
-				.endDialog();
-		})
-		.catch(err => {
-			if (typeof err === 'string') {
-				convo.say(err);
-			} else {
-				console.log(err);
-				convo.say('sorry, an error occured and I was unable to log you in. Please try again shortly');
-			}
-			convo.endDialog();
-		})
-
 }
 
 
@@ -191,29 +133,7 @@ module.exports = createDialog('sign-in', dialog => {
 						})
 					
 				},
-				askForPassphrase
-			))
-	)
-
-	/*
-	*	Set Passphrase
-	*	Collects the passphrase that was sent to them from the user.
-	*/
-
-	dialog.registerIntent(
-		dialog.intent('set-passphrase')
-			.requires(DECLARE_PASSPHRASE)
-			.params([PASSPHRASE])
-			.userSays(params => [params.passphrase()], true)
-			.fulfillWith(fulfillChain(
-				next => (convo, response) => {
-					let { passphrase } = response.meaning.parameters;
-					let { login } = convo.getState();
-					login.passphrase = passphrase;
-					convo.setState({ login });
-					next();
-				},
-				authenticateCredentials
+				sendToken
 			))
 	)
 

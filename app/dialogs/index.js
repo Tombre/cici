@@ -20,6 +20,8 @@ module.exports = [
 	require('./users/showMyDetails'),
 
 	// Authentication
-	require('./authentication/signin')
+	require('./authentication/signin'),
+	require('./authentication/signout'),
+	require('./authentication/authoriseService')
 	
 ];

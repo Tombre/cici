@@ -4,6 +4,7 @@ module.exports = [
 	require('./colour'),
 	require('./flowers'),
 	require('./occasion'),
+	require('./services'),
 	require('./user/fullName'),
 	require('./user/userSetting'),
 	require('./user/userRole'),

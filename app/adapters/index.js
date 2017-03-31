@@ -1,4 +1,4 @@
 module.exports = [
 	require('./socket'),
-	require('./slack')
+	// require('./slack')
 ];
