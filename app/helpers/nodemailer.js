@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const striptags = require('striptags');
 const config = require('config')["mailer"];
 
 /*----------------------------------------------------------
@@ -21,7 +22,8 @@ function sendMail(address, subject, content) {
 		from: '"cici" <cici@cici.cc>',
 		to: address,
 		subject,
-		text: content,
+		text: striptags(content),
+		html: content
 	};
 	
 	return new Promise((resolve, reject) => {
