@@ -51,21 +51,23 @@ module.exports = function(adaptersConstructors, dialogConstructors, entityConstr
 	Conversations
 	----------------------------------------------------------*/
 
-	const conversations = [];
+	// const conversations = [];
 
 	/*
 	*	START NEW CONVERSATIONS
 	*/
 
-	filterbyEventType(MESSAGE_RECEIVE, eventStream)
+	const conversationStream = filterbyEventType(MESSAGE_RECEIVE, eventStream)
 		.map(e => e.payload)
-		.observe(e => {
+		.scan((conversations, e) => {
 			let indexOfConvo = _.findIndex(conversations, convo => doesConvoMatchEvent(convo, e));
 			if (indexOfConvo === -1 && e.triggerConversation === true) {
 				let newConvo = new Conversation(eventStream, e, getIntent.bind(null, intents), removeConversation.bind(null, conversations));
-				conversations.push(newConvo);
+				conversations = conversations.slice(0).push(newConvo);
 			}
-		});
+			return conversations;
+		}, [])
+		.observe(() => {});
 
 	/*----------------------------------------------------------
 	Initialization
