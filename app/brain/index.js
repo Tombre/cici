@@ -51,28 +51,24 @@ module.exports = function(adaptersConstructors, dialogConstructors, entityConstr
 	Conversations
 	----------------------------------------------------------*/
 
-	// const conversations = [];
+	const conversations = [];
 
 	/*
 	*	START NEW CONVERSATIONS
 	*/
 
-	const conversations = filterbyEventType(MESSAGE_RECEIVE, eventStream)
+	filterbyEventType(MESSAGE_RECEIVE, eventStream)
 		.map(e => e.payload)
-		.scan((conversations, e) => {
-			
+		.observe(e => {
 			// Try and find an existing conversation
 			let indexOfConvo = _.findIndex(conversations, convo => doesConvoMatchEvent(convo, e));
 			
 			// if no existing conversation exists, push a new one
 			if (indexOfConvo === -1 && e.triggerConversation === true) {
 				let newConvo = new Conversation(eventStream, e, getIntent.bind(null, intents), removeConversation.bind(null, conversations));
-				conversations = conversations.slice(0).push(newConvo);
+				conversations.push(newConvo);
 			}
-
-			return conversations;
-		}, [])
-		.observe(() => {});
+		});
 
 	/*----------------------------------------------------------
 	Initialization
