@@ -15,7 +15,7 @@ const ASK_FOR_SERVICE = 'ASK_FOR_SERVICE';
 
 const connectToService = next => (convo, response) => {
 	let { service, user } = convo.getState();
-	makeServiceAccessToken(user, service, [ 'user:email' ])
+	makeServiceAccessToken(user, service)
 		.then(accessToken => {
 			convo
 				.say(`You can connect your ${service} account by clicking on this link http://localhost:3000/auth/${accessToken.token} (or copy and paste it into your browser).`)
