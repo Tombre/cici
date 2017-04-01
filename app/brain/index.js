@@ -57,14 +57,19 @@ module.exports = function(adaptersConstructors, dialogConstructors, entityConstr
 	*	START NEW CONVERSATIONS
 	*/
 
-	const conversationStream = filterbyEventType(MESSAGE_RECEIVE, eventStream)
+	const conversations = filterbyEventType(MESSAGE_RECEIVE, eventStream)
 		.map(e => e.payload)
 		.scan((conversations, e) => {
+			
+			// Try and find an existing conversation
 			let indexOfConvo = _.findIndex(conversations, convo => doesConvoMatchEvent(convo, e));
+			
+			// if no existing conversation exists, push a new one
 			if (indexOfConvo === -1 && e.triggerConversation === true) {
 				let newConvo = new Conversation(eventStream, e, getIntent.bind(null, intents), removeConversation.bind(null, conversations));
 				conversations = conversations.slice(0).push(newConvo);
 			}
+
 			return conversations;
 		}, [])
 		.observe(() => {});
