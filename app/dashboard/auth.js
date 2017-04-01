@@ -1,7 +1,8 @@
 const { User, createAdapterProfile } = require('memory/user');
 const { AccessToken } = require('memory/accessToken');
-const GitHubStrategy = require('services/github');
 const passport = require('passport');
+
+const GitHubStrategy = require('services/github').strategy;
 
 /*----------------------------------------------------------
 Types
@@ -30,7 +31,7 @@ function resolveAdapterToken(accessToken, req, res, next) {
 *	Resolve Service token
 *	Resolves a service token via passport authorize. tokenTargetID needs to match an auth strategy
 */
-function resolveServiceToken(accessToken, req, res, next) {
+function initServiceTokenResolver(accessToken, req, res, next) {
 	let { tokenTargetID, options, token } = accessToken;
 	passport.authorize(tokenTargetID, {
 		scope: options.scope,
@@ -45,7 +46,7 @@ function resolveServiceToken(accessToken, req, res, next) {
 *	Creates a new service or updates an existing one from the access token and the service profile which should be
 *	passed within the req.account property.
 */
-function newServiceFromTokenAndProfile(accessToken, req, res, next) {
+function resolveServiceToken(accessToken, req, res, next) {
 	
 	if (!accessToken) return res.send(`Sorry, could not complete your request. The access token you have supplied has expired.`);
 	
@@ -56,7 +57,7 @@ function newServiceFromTokenAndProfile(accessToken, req, res, next) {
 		.then(user => {
 			if (!user) return sendError();
 			user.services.push(serviceProfile);
-			return user.save();
+			return Promise.all([user.save(), accessToken.remove()]);
 		})
 		.then(user => {
 			res.send('success!');
@@ -89,7 +90,7 @@ module.exports = function(app, passport) {
 				if (!accessToken) return res.send(`Sorry, could not complete your request. The access token you have supplied has expired.`);
 				let { tokenType } = accessToken;
 				if (tokenType === 'adapter') return resolveAdapterToken(accessToken, req, res, next);
-				if (tokenType === 'service') return resolveServiceToken(accessToken, req, res, next)
+				if (tokenType === 'service') return initServiceTokenResolver(accessToken, req, res, next)
 				next();
 			})
 			.catch(e => res.send(e));
@@ -104,11 +105,11 @@ module.exports = function(app, passport) {
 		'/auth/:token/callback', 
 		function(req, res, next) {
 			getAccessTokenFromRequest(req)
-				.then(accessToken => resolveServiceToken(accessToken, req, res, next));
+				.then(accessToken => initServiceTokenResolver(accessToken, req, res, next));
 		},
 		function(req, res, next) {
 			getAccessTokenFromRequest(req)
-				.then(accessToken => newServiceFromTokenAndProfile(accessToken, req, res, next))
+				.then(accessToken => resolveServiceToken(accessToken, req, res, next))
 		}
 	);
 
