@@ -22,6 +22,12 @@ module.exports = [
 	// Authentication
 	require('./authentication/signin'),
 	require('./authentication/signout'),
-	require('./authentication/authoriseService')
+	// require('./authentication/authoriseService')
+
+	// Github
+	require('./github/tasks'),
+
+	// Google
+	require('./google/calendar')
 	
 ];
