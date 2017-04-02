@@ -1,8 +1,10 @@
 const { User, createAdapterProfile } = require('memory/user');
 const { AccessToken } = require('memory/accessToken');
 const passport = require('passport');
+const _ = require('lodash');
 
-const GitHubStrategy = require('services/github').strategy;
+const GitHubStrategy = require('services/github');
+const GoogleStrategy = require('services/google');
 
 /*----------------------------------------------------------
 Types
@@ -33,6 +35,7 @@ function resolveAdapterToken(accessToken, req, res, next) {
 */
 function initServiceTokenResolver(accessToken, req, res, next) {
 	let { tokenTargetID, options, token } = accessToken;
+	console.log('INIT IT BOI');
 	passport.authorize(tokenTargetID, {
 		scope: options.scope,
 		session: false,
@@ -51,13 +54,25 @@ function resolveServiceToken(accessToken, req, res, next) {
 	if (!accessToken) return res.send(`Sorry, could not complete your request. The access token you have supplied has expired.`);
 	
 	let serviceProfile = req.account;
+	serviceProfile.scope = accessToken.options.scope;
+
 	const sendError = () => res.send(`Sorry, your access token could not be authenticated`);
-	
+
 	return User.findById(accessToken.userID)
 		.then(user => {
+			
 			if (!user) return sendError();
-			user.services.push(serviceProfile);
+			
+			let index = _.findIndex(user.services, service => service.name === serviceProfile.name);
+			
+			if (index >= 0) {
+				user.services[index] = serviceProfile;
+			} else {
+				user.services.push(serviceProfile);
+			}
+			
 			return Promise.all([user.save(), accessToken.remove()]);
+
 		})
 		.then(user => {
 			res.send('success!');
@@ -76,6 +91,7 @@ module.exports = function(app, passport) {
 	----------------------------------------------------------*/
 
 	passport.use(GitHubStrategy());
+	passport.use(GoogleStrategy());
 
 	/*----------------------------------------------------------
 	Token Routes

@@ -1,17 +1,17 @@
-const GitHubStrategy = require('passport-github').Strategy;
-const githubConfig = require('config').services.github;
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const googleConfig = require('config').services.google;
 const _ = require('lodash');
 
 module.exports = function() {
-	return new GitHubStrategy(
+	return new GoogleStrategy(
 		{
-			clientID: githubConfig.clientID,
-			clientSecret: githubConfig.clientSecret
+			clientID: googleConfig.clientID,
+			clientSecret: googleConfig.clientSecret
 		},
 		function(accessToken, refreshToken, profile, done) {
 			profile = _.omit(profile, '_json', '_raw');
 			return done(null, { 
-				name: 'github',
+				name: 'google',
 				userID: profile.id, 
 				profile, 
 				accessToken, 

@@ -42,6 +42,7 @@ const userShema = mongoose.Schema({
 	services: [{
 		name: String,
 		userID: String,
+		scope: Array,
 		profile: Object,
 		accessToken: String,
 		refreshToken: String
@@ -208,6 +209,46 @@ function removeAdapterProfile(userID, adapter) {
 }
 
 module.exports.removeAdapterProfile = removeAdapterProfile;
+
+
+/*
+* 	Create Service Profile	
+*/
+function createServiceProfile(userID, service) {
+	return new Promise((resolve, reject) => {
+		User.findByIdAndUpdate(
+			userID,
+			{ $push: { "services": service } },
+			{ upsert: true, runValidators: true },
+			(err, user) => {
+				if (err) return reject(err);
+				resolve(user);
+			}
+		)
+	});
+}
+
+module.exports.createServiceProfile = createServiceProfile;
+
+
+/*
+* 	Remove Adapter Profile	
+*/
+function removeServiceProfile(userID, service) {
+	return new Promise((resolve, reject) => {
+		User.findByIdAndUpdate(
+			userID,
+			{ $pull: { "services": { service } } },
+			{ runValidators: true },
+			(err, user) => {
+				if (err) return reject(err);
+				resolve(user);
+			}
+		)
+	});
+}
+
+module.exports.removeServiceProfile = removeServiceProfile;
 
 
 /*----------------------------------------------------------

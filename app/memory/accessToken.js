@@ -51,6 +51,20 @@ const accessTokenSchema = mongoose.Schema({
 }, { strict: 'throw' });
 
 /*----------------------------------------------------------
+Virtuals
+----------------------------------------------------------*/
+
+/*
+*	tokenLink
+*	provide a link for the token
+*/
+
+accessTokenSchema.virtual('tokenLink')
+	.get(function() {
+		 return `http://localhost:3000/auth/${this.token}`;
+	})
+
+/*----------------------------------------------------------
 MiddleWare
 ----------------------------------------------------------*/
 
@@ -89,7 +103,6 @@ module.exports.AccessToken = AccessToken;
 /*----------------------------------------------------------
 Functions
 ----------------------------------------------------------*/
-
 
 /*
 *	Makes an adapter access token
@@ -151,3 +164,29 @@ function makeServiceAccessToken(user, service, scope) {
 }
 
 module.exports.makeServiceAccessToken = makeServiceAccessToken;
+
+
+/*----------------------------------------------------------
+Fulfillment
+----------------------------------------------------------*/
+
+function requireService(serviceName, scope) {
+	return next => (convo, response) => {
+		
+		let { user } = convo.getState();
+		let service = _.find(user.services, { name: serviceName });
+
+		if (service && _.difference(scope, service.scope).length === 0) {
+			return next();
+		}
+
+		makeServiceAccessToken(user, serviceName, (service ? _.union(scope, service.scopes) : scope))
+			.then(accessToken => {
+				convo
+					.setState({ accessToken })
+					.say(`You need permission (which you don't have) from your ${serviceName} account. To provide permission, click on this link: ${accessToken.tokenLink} (or copy and paste it into your browser).`)
+			})
+	}
+}
+
+module.exports.requireService = requireService;
