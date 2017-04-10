@@ -4,7 +4,7 @@ const _ = require('lodash');
 const dialogs = require('../app/dialogs')
 const entities = require('../app/entities')
 
-const api = require('helpers/api');
+const api = require('helpers/nlp');
 const chalk = require('chalk');
 
 /*----------------------------------------------------------

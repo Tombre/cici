@@ -1,5 +1,5 @@
 const _ = require('lodash');
-const api = require('helpers/api');
+const api = require('helpers/nlp');
 const chalk = require('chalk');
 const ProgressBar = require('progress');
 
