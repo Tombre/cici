@@ -1,8 +1,9 @@
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const googleConfig = require('config').services.google;
 const _ = require('lodash');
+const request = require('request');
 
-module.exports = function() {
+module.exports.strategy = function() {
 	return new GoogleStrategy(
 		{
 			clientID: googleConfig.clientID,
@@ -19,4 +20,8 @@ module.exports = function() {
 			});
 		}
 	)
+}
+
+module.exports.loadTasks = function() {
+
 }

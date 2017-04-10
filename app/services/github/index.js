@@ -2,7 +2,7 @@ const GitHubStrategy = require('passport-github').Strategy;
 const githubConfig = require('config').services.github;
 const _ = require('lodash');
 
-module.exports = function() {
+module.exports.strategy = function() {
 	return new GitHubStrategy(
 		{
 			clientID: githubConfig.clientID,

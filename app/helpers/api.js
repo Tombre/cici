@@ -26,8 +26,6 @@ module.exports = function getAPI(
 			options.body = BODY;
 			options.qs = QUERY;
 
-			console.log(options);
-
 			request[type](options, (error, response, body) => {
 				if (error) return reject(error);
 				let code = body.status && parseInt(body.status.code, 10);

@@ -3,8 +3,8 @@ const { AccessToken } = require('memory/accessToken');
 const passport = require('passport');
 const _ = require('lodash');
 
-const GitHubStrategy = require('services/github');
-const GoogleStrategy = require('services/google');
+const GitHubStrategy = require('services/github').strategy;
+const GoogleStrategy = require('services/google').strategy;
 
 /*----------------------------------------------------------
 Types
