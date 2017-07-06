@@ -78,10 +78,6 @@ function defaultResponse(convo, meaning) {
 	]));
 }
 
-function errorHandler(error) {
-	console.log('ERROR', error);
-}
-
 /*----------------------------------------------------------
 Conversation Object
 ----------------------------------------------------------*/
@@ -236,25 +232,28 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 	Subscriptions
 	----------------------------------------------------------*/
 
+	const catchIntentEvalautionError = (e) => {
+		say(`Sorry, an error occured and I am unable to complete your request`);
+		log(`Failed to evaluate solutions`, { e });
+		console.log(e);
+	}
+
 	/*
 	*	Evaluate Intent
 	*	Takes an intent and evaluates it's solutions
 	*/
-	const evaluateIntentWithEvent = (intent, e) => {
+	const evaluateIntentWithEvent = (e) => {
 
 		let toPass = { say, log, setContext, clearContext, endDialog, setState, getState, clearState, mapToIntent, dispatch };
-
 		this.cognitiveFunction = 'evaluation';
-
-		let catchError = (e => {
-			say(`Sorry, an error occured and I am unable to complete your request`);
-			log(`Failed to evaluate solutions`, { intent, message: e });
-			console.log(e);
-		});
 
 		// run the solutions, passing toPass and the meaning of the message. If they return a promise, we will wait for them
 		// to complete before continuing
 		try {
+
+			if (!e.meaning) throw new Error('Meaning of text not returned correctly by api');
+
+			let intent = getIntent(e.meaning.action);	
 
 			if (!intent || intent.solutions.length === 0) {
 
@@ -271,7 +270,7 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 
 			}
 		} catch(e) {
-			catchError(e);
+			catchIntentEvalautionError(e);
 		}
 
 		this.cognitiveFunction = 'idle'
@@ -288,11 +287,9 @@ function Conversation(eventStream, sourceEvent, getIntent, removeFromConversatio
 		if (e.author === 'bot') return;
 		
 		log(`Message recieved`, e);
+		return evaluateIntentWithEvent(e);
 
-		let intent = getIntent(e.meaning.action);	
-		return evaluateIntentWithEvent(intent, e);
-
-	}, errorHandler);
+	}, catchIntentEvalautionError);
 
 	// subscribes to a debug handler this coversation. This will write logs into the conversation if those logs match the current conversation
 	const debugSubscription = () => {
