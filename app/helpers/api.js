@@ -4,16 +4,16 @@ const request = require('request');
 module.exports = function getAPI(
 	getURL = (()=>{}), 
 	getHeaders = (()=>{}), 
-	getQuery = ((type, entity, query)=>query), 
-	getBody = ((type, entity, body)=>body)
+	getQuery = (({ query })=>query), 
+	getBody = (({ body })=>body)
 ) {
 
-	function req(type, entity, query, body) {
+	function req(type, entity, query, body, headers) {
 
-		const URL = getURL(type, entity, query, body);
-		const HEADERS = getHeaders(type, entity, query, body);
-		const QUERY = getQuery(type, entity, query);
-		const BODY = getBody(type, entity, body);
+		const URL = getURL({ type, entity, query, body, headers });
+		const HEADERS = getHeaders({ type, entity, query, body, headers });
+		const QUERY = getQuery({ type, entity, query, headers });
+		const BODY = getBody({ type, entity, body, headers });
 
 		return new Promise((resolve, reject) => {
 			
