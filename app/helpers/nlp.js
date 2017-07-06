@@ -3,14 +3,15 @@ const _ = require('lodash');
 const makeAPI = require('./api');
 
 const API = makeAPI(
-	(type, entity, query, body) => {
+	({ entity, query }) => {
 		let url = `https://api.api.ai/v1/${entity}/`;
 		if (_.isPlainObject(query) && query.id) url += `${query.id}/`;
 		url += `?v=${config.v}`;
 		return url;
 	},
-	(type, entity, query, body) => { 
-		let headers = { 'Authorization': `Bearer ${config.key}` };
+	({ type, headers }) => { 
+		headers = headers || {};
+		headers['Authorization'] = `Bearer ${config.key}`;
 		if (type !== 'get') headers['Content-Type'] = 'application/json; charset=utf-8';
 		return headers;
 	}
