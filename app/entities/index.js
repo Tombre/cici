@@ -10,6 +10,7 @@ module.exports = [
 	require('./user/userRole'),
 	require('./language/possession'),
 	require('./language/subject'),
-	require('./language/relationships')
+	require('./language/relationships'),
+	require('./language/timing')
 
 ];
